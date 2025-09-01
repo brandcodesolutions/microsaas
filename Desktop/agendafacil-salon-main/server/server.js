@@ -133,6 +133,7 @@ app.post('/api/login', async (req, res) => {
     res.json({
       message: 'Login realizado com sucesso',
       token,
+      salonId: user.id,
       user: {
         id: user.id,
         email: user.email,

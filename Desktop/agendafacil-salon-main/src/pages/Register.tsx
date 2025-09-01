@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabaseApi } from "@/services/supabase-api";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -18,24 +19,55 @@ const Register = () => {
     address: "",
     description: ""
   });
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simular cadastro
-    toast({
-      title: "Salão cadastrado com sucesso!",
-      description: "Redirecionando para o dashboard...",
-    });
-    // Aqui você faria a integração com o backend
-    setTimeout(() => {
-      // Gerar um ID único para o salão baseado no nome do salão
-      const salonId = formData.salonName
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9-]/g, '') || 'meu-salao';
-      window.location.href = `/dashboard/${salonId}`;
-    }, 1000);
+    setIsLoading(true);
+
+    try {
+      const response = await supabaseApi.auth.signUp(
+        formData.email,
+        formData.password,
+        {
+          name: formData.salonName,
+          phone: formData.phone,
+          address: formData.address,
+          description: formData.description
+        }
+      );
+
+      if (!response.success) {
+        throw new Error(response.error || 'Erro ao cadastrar');
+      }
+
+      toast({
+        title: "Salão cadastrado com sucesso!",
+        description: "Verifique seu email para confirmar a conta e depois faça login.",
+      });
+
+      // Limpar o formulário após cadastro bem-sucedido
+      setFormData({
+        salonName: '',
+        ownerName: '',
+        email: '',
+        password: '',
+        phone: '',
+        address: '',
+        description: ''
+      });
+    } catch (error: any) {
+      console.error('Erro no cadastro:', error);
+      toast({
+        title: "Erro no cadastro",
+        description: error.message || "Ocorreu um erro ao cadastrar o salão. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -156,8 +188,8 @@ const Register = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full text-lg py-6">
-                Criar Conta e Começar
+              <Button type="submit" className="w-full text-lg py-6" disabled={isLoading}>
+                {isLoading ? "Criando conta..." : "Criar Conta e Começar"}
               </Button>
             </form>
             

@@ -103,7 +103,14 @@ class ApiService {
   async registerSalon(data: { email: string; password: string; name: string; phone?: string; address?: string; description?: string }) {
     return this.request('/register', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password,
+        salonName: data.name,
+        phone: data.phone,
+        address: data.address,
+        description: data.description
+      }),
     });
   }
 
@@ -117,3 +124,7 @@ class ApiService {
 }
 
 export const apiService = new ApiService();
+
+// Export individual functions for easier use
+export const login = (email: string, password: string) => apiService.loginSalon(email, password);
+export const register = (data: { email: string; password: string; name: string; phone?: string; address?: string; description?: string }) => apiService.registerSalon(data);

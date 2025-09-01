@@ -5,14 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from 'sonner';
-import { Calendar, Clock, User, Phone, Mail, Scissors, MapPin } from 'lucide-react';
-import { apiService, type Salon } from '@/services/api';
+
+import { useToast } from '@/hooks/use-toast';
+import { Calendar, MapPin } from 'lucide-react';
+import { supabaseApi, type User } from '@/services/supabase-api';
 
 const Agendamento = () => {
   const { salonId } = useParams<{ salonId: string }>();
-  const [salonInfo, setSalonInfo] = useState<Salon | null>(null);
+  const { toast } = useToast();
+  const [salonInfo, setSalonInfo] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
@@ -43,7 +44,7 @@ const Agendamento = () => {
     "Pedro Oliveira - Cabelereiro"
   ]);
 
-  // Carregar informações do salão e dados do localStorage
+  // Carregar informações do salão usando Supabase
   useEffect(() => {
     const loadSalonInfo = async () => {
       if (!salonId) {
@@ -52,11 +53,23 @@ const Agendamento = () => {
       }
 
       try {
-        const salon = await apiService.getSalon(salonId);
-        setSalonInfo(salon);
+        const response = await supabaseApi.users.getProfile(salonId);
+        if (response.success) {
+          setSalonInfo(response.data);
+        } else {
+          toast({
+            title: "Erro",
+            description: "Erro ao carregar informações do salão",
+            variant: "destructive"
+          });
+        }
       } catch (error) {
         console.error('Erro ao carregar informações do salão:', error);
-        toast.error('Erro ao carregar informações do salão');
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar informações do salão",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
@@ -104,37 +117,43 @@ const Agendamento = () => {
     setSubmitting(true);
     
     try {
-      await apiService.createAppointment(salonId, {
-        clientName: formData.clientName,
-        email: formData.email,
-        phone: formData.phone,
+      const response = await supabaseApi.appointments.create({
+        user_id: salonId,
+        client_name: formData.clientName,
+        client_email: formData.email,
+        client_phone: formData.phone,
         service: formData.service,
         professional: formData.professional,
-        date: formData.date,
-        time: formData.time,
-        observations: formData.observations
+        appointment_date: formData.date,
+        appointment_time: formData.time,
+        observations: formData.observations,
+        status: 'pending'
       });
       
-      toast({
-        title: "Agendamento realizado!",
-        description: "Seu agendamento foi enviado com sucesso. Entraremos em contato para confirmação."
-      });
-      
-      // Reset form
-      setFormData({
-        clientName: "",
-        phone: "",
-        email: "",
-        service: "",
-        professional: "",
-        date: "",
-        time: "",
-         observations: ""
-      });
+      if (response.success) {
+        toast({
+          title: "Sucesso!",
+          description: "Agendamento realizado! Entraremos em contato para confirmação."
+        });
+        
+        // Reset form
+        setFormData({
+          clientName: "",
+          phone: "",
+          email: "",
+          service: "",
+          professional: "",
+          date: "",
+          time: "",
+          observations: ""
+        });
+      } else {
+        throw new Error(response.error || 'Erro ao criar agendamento');
+      }
     } catch (error) {
       console.error('Erro ao salvar agendamento:', error);
       toast({
-        title: "Erro ao agendar",
+        title: "Erro",
         description: error instanceof Error ? error.message : "Ocorreu um erro ao salvar seu agendamento. Tente novamente.",
         variant: "destructive"
       });
@@ -324,12 +343,12 @@ const Agendamento = () => {
 
                 {/* Notes */}
                 <div>
-                  <Label htmlFor="notes">Observações</Label>
+                  <Label htmlFor="observations">Observações</Label>
                   <Textarea
-                    id="notes"
+                    id="observations"
                     placeholder="Alguma observação especial?"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    value={formData.observations}
+                    onChange={(e) => setFormData({...formData, observations: e.target.value})}
                     rows={3}
                   />
                 </div>

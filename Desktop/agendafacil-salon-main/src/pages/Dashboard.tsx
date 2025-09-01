@@ -6,18 +6,20 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, Users, BarChart3, Settings, Share2, Bell, Plus, Edit, Trash2 } from "lucide-react";
+import { Calendar, Clock, Users, BarChart3, Settings, Share2, Bell, Plus, Edit, Trash2, LogOut } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { apiService, type Appointment, type Salon } from "@/services/api";
+import { supabaseApi, type Appointment, type User } from "@/services/supabase-api";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { salonId } = useParams<{ salonId: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [agendamentos, setAgendamentos] = useState<Appointment[]>([]);
-  const [salonInfo, setSalonInfo] = useState<Salon | null>(null);
+  const [salonInfo, setSalonInfo] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [services, setServices] = useState([]);
   const [professionals, setProfessionals] = useState([]);
@@ -30,6 +32,17 @@ const Dashboard = () => {
     email: "",
     workingHours: ""
   });
+
+  const handleLogout = async () => {
+    await supabaseApi.auth.signOut();
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    toast({
+      title: "Logout realizado com sucesso!",
+      description: "Você foi desconectado do sistema."
+    });
+    navigate('/login', { replace: true });
+  };
 
 
 
@@ -82,29 +95,39 @@ const Dashboard = () => {
     }
   }, [salonId]);
 
-  // Carregar dados usando a API backend
+  // Carregar dados usando o Supabase
   useEffect(() => {
     const carregarDados = async () => {
-      if (!salonId) {
+      // Verificar se há usuário autenticado
+      const storedUserId = localStorage.getItem('userId');
+      const storedUserEmail = localStorage.getItem('userEmail');
+      
+      if (!storedUserId || !storedUserEmail) {
+        toast({
+          title: "Erro de Autenticação",
+          description: "Você precisa fazer login para acessar o dashboard",
+          variant: "destructive"
+        });
+        navigate('/login');
         setLoading(false);
         return;
       }
       
+      setUserId(storedUserId);
+      
       try {
-        // Carregar informações do salão
-        const salon = await apiService.getSalon(salonId);
-        setSalonInfo(salon);
+        // Carregar informações do usuário
+        const userResponse = await supabaseApi.users.getProfile(storedUserId);
+        if (userResponse.success) {
+          setSalonInfo(userResponse.data);
+        }
         
-        // Para o dashboard, vamos simular um token de autenticação
-        // Em uma aplicação real, isso viria do login
-        const mockToken = 'mock-token-for-demo';
-        setToken(mockToken);
+        // Carregar agendamentos do usuário
+        const appointmentsResponse = await supabaseApi.appointments.getByUserId(storedUserId);
+        if (appointmentsResponse.success) {
+          setAgendamentos(appointmentsResponse.data);
+        }
         
-        // Por enquanto, vamos usar localStorage para agendamentos até implementar autenticação completa
-        const agendamentosStorage = localStorage.getItem(`agendamentos_${salonId}`);
-        const agendamentosData = agendamentosStorage ? JSON.parse(agendamentosStorage) : [];
-        
-        setAgendamentos(agendamentosData);
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
         toast({
@@ -118,28 +141,7 @@ const Dashboard = () => {
     };
 
     carregarDados();
-
-    // Listener para mudanças no localStorage
-    const handleStorageChange = (e) => {
-      if (e.key === `agendamentos_${salonId}`) {
-        const agendamentosSalvos = JSON.parse(localStorage.getItem(`agendamentos_${salonId}`) || '[]');
-        setAgendamentos(agendamentosSalvos);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Verificar periodicamente por novos agendamentos
-    const interval = setInterval(() => {
-      const agendamentosSalvos = JSON.parse(localStorage.getItem(`agendamentos_${salonId}`) || '[]');
-      setAgendamentos(agendamentosSalvos);
-    }, 2000);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [salonId, toast]);
+  }, [toast, navigate]);
 
   const atualizarAgendamentos = () => {
     if (!salonId) return;
@@ -166,7 +168,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
-      {/* Header */}
+      {/* Header com Logout */}
       <header className="bg-background/80 backdrop-blur-sm border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -174,7 +176,7 @@ const Dashboard = () => {
               <Calendar className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <span className="text-xl font-bold text-primary">Salão Beleza Total</span>
+              <span className="text-xl font-bold text-primary">AgendaFácil</span>
               <p className="text-sm text-muted-foreground">Painel de Controle</p>
             </div>
           </div>
@@ -203,6 +205,10 @@ const Dashboard = () => {
             </Button>
             <Button variant="outline" size="sm">
               <Settings className="w-4 h-4" />
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="flex items-center space-x-2">
+              <LogOut className="w-4 h-4" />
+              <span>Sair</span>
             </Button>
           </div>
         </div>

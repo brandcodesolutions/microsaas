@@ -1,38 +1,65 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabaseApi } from "@/services/supabase-api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simulação de login - em produção, isso seria uma chamada para API
-    if (email && password) {
+    if (!email || !password) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await supabaseApi.auth.signIn(email, password);
+
+      if (response.error) {
+        toast({
+          title: "Erro no login",
+          description: response.error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Salvar dados no localStorage
+      localStorage.setItem('userId', response.data.id);
+      localStorage.setItem('userEmail', response.data.email);
+      localStorage.setItem('token', 'authenticated');
+      localStorage.setItem('salonId', response.data.id);
+
       toast({
         title: "Login realizado com sucesso!",
         description: "Redirecionando para o dashboard...",
       });
-      
-      setTimeout(() => {
-        // Gerar um ID único para o salão baseado no email ou usar um padrão
-        const salonId = email.replace('@', '-').replace('.', '-') || 'meu-salao';
-        window.location.href = `/dashboard/${salonId}`;
-      }, 1000);
-    } else {
+        
+      // Redirecionar para o dashboard
+      window.location.href = `/dashboard/${response.data.id}`;
+    } catch (error: any) {
       toast({
         title: "Erro no login",
-        description: "Por favor, preencha email e senha",
-        variant: "destructive"
+        description: error.message || "Credenciais inválidas",
+        variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -81,20 +108,20 @@ const Login = () => {
                   required
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Entrar
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Entrando..." : "Entrar"}
               </Button>
             </form>
             
-            <div className="mt-6 text-center space-y-2">
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+            <div className="flex flex-col space-y-2 text-center">
+              <a href="/forgot-password" className="text-sm text-muted-foreground hover:underline">
                 Esqueceu sua senha?
-              </Link>
+              </a>
               <div className="text-sm text-muted-foreground">
                 Ainda não tem conta?{" "}
-                <Link to="/register" className="text-primary hover:underline">
+                <a href="/register" className="text-primary hover:underline">
                   Cadastre seu salão
-                </Link>
+                </a>
               </div>
             </div>
           </CardContent>
