@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - Correção do Perfil do Salão</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Teste - Correção do Perfil do Salão</h1>
+        <p>Este teste verifica se o erro "perfil do salão não encontrado" foi corrigido.</p>
+        
+        <div class="test-section">
+            <h3>1. Configuração do Supabase</h3>
+            <button onclick="testSupabaseConfig()">Testar Configuração</button>
+            <div id="config-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Teste de Login</h3>
+            <input type="email" id="email" placeholder="E-mail" value="teste@exemplo.com">
+            <input type="password" id="password" placeholder="Senha" value="123456">
+            <button onclick="testLogin()">Fazer Login</button>
+            <div id="login-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Verificar Perfil do Usuário</h3>
+            <button onclick="testUserProfile()">Verificar Perfil</button>
+            <div id="profile-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Testar Query Corrigida do Dashboard</h3>
+            <button onclick="testDashboardQuery()">Testar Query do Dashboard</button>
+            <div id="dashboard-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Criar Novo Usuário (Teste de Trigger)</h3>
+            <input type="email" id="new-email" placeholder="E-mail" value="novo@teste.com">
+            <input type="password" id="new-password" placeholder="Senha" value="123456">
+            <input type="text" id="new-name" placeholder="Nome" value="Usuário Teste">
+            <button onclick="testNewUser()">Criar Usuário</button>
+            <div id="newuser-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        let supabase;
+        let currentUser = null;
+        
+        // Carregar configuração do .env
+        async function loadEnvConfig() {
+            try {
+                const response = await fetch('/.env');
+                if (response.ok) {
+                    const envText = await response.text();
+                    const lines = envText.split('\n');
+                    const config = {};
+                    
+                    lines.forEach(line => {
+                        if (line.includes('=') && !line.startsWith('#')) {
+                            const [key, value] = line.split('=');
+                            config[key.trim()] = value.trim().replace(/["']/g, '');
+                        }
+                    });
+                    
+                    return config;
+                }
+            } catch (error) {
+                console.log('Não foi possível carregar .env, usando valores padrão');
+            }
+            return null;
+        }
+        
+        async function initSupabase() {
+            const config = await loadEnvConfig();
+            
+            const url = config?.VITE_SUPABASE_URL || SUPABASE_URL;
+            const key = config?.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+            
+            supabase = window.supabase.createClient(url, key);
+            return { url, key };
+        }
+        
+        function showResult(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="${type}"><pre>${message}</pre></div>`;
+        }
+        
+        async function testSupabaseConfig() {
+            try {
+                const config = await initSupabase();
+                
+                if (config.url.includes('your-project') || config.key.includes('your-anon-key')) {
+                    showResult('config-result', '❌ Configuração não encontrada!\n\nPor favor, verifique se o arquivo .env está configurado corretamente com suas credenciais do Supabase.', 'error');
+                    return;
+                }
+                
+                // Testar conexão
+                const { data, error } = await supabase.from('salons').select('count').limit(1);
+                
+                if (error) {
+                    showResult('config-result', `❌ Erro de conexão: ${error.message}`, 'error');
+                } else {
+                    showResult('config-result', `✅ Configuração OK!\n\nURL: ${config.url}\nKey: ${config.key.substring(0, 20)}...`, 'success');
+                }
+            } catch (error) {
+                showResult('config-result', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            if (!supabase) await initSupabase();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                showResult('login-result', '🔄 Fazendo login...', 'info');
+                
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    showResult('login-result', `❌ Erro no login: ${error.message}`, 'error');
+                } else {
+                    currentUser = data.user;
+                    showResult('login-result', `✅ Login realizado com sucesso!\n\nUsuário: ${data.user.email}\nID: ${data.user.id}`, 'success');
+                }
+            } catch (err) {
+                showResult('login-result', `❌ Erro: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testUserProfile() {
+            if (!currentUser) {
+                showResult('profile-result', '❌ Faça login primeiro', 'error');
+                return;
+            }
+            
+            try {
+                showResult('profile-result', '🔄 Carregando perfil do usuário...', 'info');
+                
+                // Testar a query corrigida
+                const { data: profile, error } = await supabase
+                    .from('user_profiles')
+                    .select(`
+                        *,
+                        salons (
+                            id,
+                            name,
+                            email,
+                            phone,
+                            address
+                        )
+                    `)
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (error) {
+                    showResult('profile-result', `❌ Erro ao buscar perfil: ${error.message}`, 'error');
+                    return;
+                }
+                
+                if (!profile) {
+                    showResult('profile-result', '❌ Perfil não encontrado', 'error');
+                    return;
+                }
+                
+                if (!profile.salons) {
+                    showResult('profile-result', '❌ Salão não encontrado para o usuário', 'error');
+                    return;
+                }
+                
+                showResult('profile-result', `✅ Perfil carregado com sucesso!\n\n${JSON.stringify(profile, null, 2)}`, 'success');
+                
+            } catch (error) {
+                showResult('profile-result', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testDashboardQuery() {
+            if (!currentUser) {
+                showResult('dashboard-result', '❌ Faça login primeiro', 'error');
+                return;
+            }
+            
+            try {
+                showResult('dashboard-result', '🔄 Testando query do dashboard...', 'info');
+                
+                // Simular exatamente o que o Dashboard.tsx faz
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select(`
+                        *,
+                        salons (
+                            id,
+                            name,
+                            email,
+                            phone,
+                            address
+                        )
+                    `)
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (!profile || !profile.salons) {
+                    showResult('dashboard-result', '❌ ERRO: Perfil ou salão não encontrado!\n\nEste é o erro que estava acontecendo antes da correção.', 'error');
+                    return;
+                }
+                
+                // Carregar dados do salão
+                const [servicesResult, professionalsResult, appointmentsResult] = await Promise.all([
+                    supabase.from('services').select('*').eq('salon_id', profile.salons.id),
+                    supabase.from('professionals').select('*').eq('salon_id', profile.salons.id),
+                    supabase.from('appointments').select('*').eq('salon_id', profile.salons.id)
+                ]);
+                
+                const result = {
+                    profile: profile,
+                    salon: profile.salons,
+                    services: servicesResult.data || [],
+                    professionals: professionalsResult.data || [],
+                    appointments: appointmentsResult.data || []
+                };
+                
+                showResult('dashboard-result', `✅ Query do dashboard funcionando!\n\n${JSON.stringify(result, null, 2)}`, 'success');
+                
+            } catch (error) {
+                showResult('dashboard-result', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testNewUser() {
+            if (!supabase) await initSupabase();
+            
+            const email = document.getElementById('new-email').value;
+            const password = document.getElementById('new-password').value;
+            const name = document.getElementById('new-name').value;
+            
+            try {
+                showResult('newuser-result', '🔄 Criando novo usuário...', 'info');
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: name
+                        }
+                    }
+                });
+                
+                if (error) {
+                    showResult('newuser-result', `❌ Erro ao criar usuário: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Aguardar um pouco para o trigger executar
+                setTimeout(async () => {
+                    try {
+                        // Verificar se o perfil e salão foram criados
+                        const { data: profile } = await supabase
+                            .from('user_profiles')
+                            .select(`
+                                *,
+                                salons (*)
+                            `)
+                            .eq('id', data.user.id)
+                            .single();
+                        
+                        if (profile && profile.salons) {
+                            showResult('newuser-result', `✅ Usuário criado com sucesso!\n\nTrigger funcionou: Salão criado automaticamente\n\n${JSON.stringify(profile, null, 2)}`, 'success');
+                        } else {
+                            showResult('newuser-result', `⚠️ Usuário criado, mas trigger pode não ter funcionado\n\nPerfil: ${JSON.stringify(profile, null, 2)}`, 'error');
+                        }
+                    } catch (err) {
+                        showResult('newuser-result', `✅ Usuário criado, mas erro ao verificar trigger: ${err.message}`, 'info');
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                showResult('newuser-result', `❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        // Inicializar ao carregar a página
+        window.onload = function() {
+            testSupabaseConfig();
+        };
+    </script>
+</body>
+</html>

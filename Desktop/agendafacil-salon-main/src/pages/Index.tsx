@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, Users, Smartphone, BarChart3, Star } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+// import { Link, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
 const Index = () => {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   // Removido o redirecionamento automático para permitir acesso à página inicial
 
@@ -21,12 +21,12 @@ const Index = () => {
             <span className="text-xl font-bold text-primary">AgendaFácil</span>
           </div>
           <div className="flex space-x-4">
-            <Link to="/login">
+            <a href="/login">
               <Button variant="outline">Entrar</Button>
-            </Link>
-            <Link to="/register">
+            </a>
+            <a href="/register">
               <Button>Cadastrar Salão</Button>
-            </Link>
+            </a>
           </div>
         </div>
       </header>
@@ -42,16 +42,16 @@ const Index = () => {
           Simplifique sua gestão e ofereça praticidade aos seus clientes.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/register">
+          <a href="/register">
             <Button size="lg" className="text-lg px-8 py-6">
               Começar Gratuitamente
             </Button>
-          </Link>
-          <Link to="/demo">
+          </a>
+          <a href="/demo">
             <Button variant="outline" size="lg" className="text-lg px-8 py-6">
               Ver Demonstração
             </Button>
-          </Link>
+          </a>
         </div>
       </section>
 
@@ -132,11 +132,11 @@ const Index = () => {
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Junte-se a centenas de salões que já transformaram sua gestão
           </p>
-          <Link to="/register">
+          <a href="/register">
             <Button size="lg" className="text-lg px-8 py-6">
               Criar Conta Grátis
             </Button>
-          </Link>
+          </a>
         </div>
       </section>
 

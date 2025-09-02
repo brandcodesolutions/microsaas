@@ -1,63 +1,46 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabaseApi } from "@/services/supabase-api";
+import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     
     if (!email || !password) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha todos os campos",
-        variant: "destructive",
-      });
+      setError("Por favor, preencha todos os campos");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const response = await supabaseApi.auth.signIn(email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (response.error) {
-        toast({
-          title: "Erro no login",
-          description: response.error.message,
-          variant: "destructive",
-        });
+      if (error) {
+        setError(error.message);
         return;
       }
 
-      // Salvar dados no localStorage
-      localStorage.setItem('userId', response.data.id);
-      localStorage.setItem('userEmail', response.data.email);
-      localStorage.setItem('token', 'authenticated');
-      localStorage.setItem('salonId', response.data.id);
-
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Redirecionando para o dashboard...",
-      });
-        
-      // Redirecionar para o dashboard
-      window.location.href = `/dashboard/${response.data.id}`;
+      if (data.user) {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
-      toast({
-        title: "Erro no login",
-        description: error.message || "Credenciais inválidas",
-        variant: "destructive",
-      });
+      setError(error.message || "Erro inesperado");
     } finally {
       setIsLoading(false);
     }
@@ -66,25 +49,24 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="text-2xl font-bold text-primary">AgendaFácil</span>
+        <div className="text-center mb-6">
+          <div className="flex items-center justify-center space-x-2 mb-3">
+            <Calendar className="w-8 h-8 text-primary" />
+            <span className="text-xl font-bold text-primary">AgendaFácil</span>
           </div>
-          <h1 className="text-2xl font-bold">Entrar na sua conta</h1>
-          <p className="text-muted-foreground">Acesse o painel do seu salão</p>
+          <h1 className="text-xl font-bold">Login</h1>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <CardDescription>
-              Digite suas credenciais para acessar o sistema
-            </CardDescription>
+            <CardTitle>Acesse sua conta</CardTitle>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
@@ -113,14 +95,11 @@ const Login = () => {
               </Button>
             </form>
             
-            <div className="flex flex-col space-y-2 text-center">
-              <a href="/forgot-password" className="text-sm text-muted-foreground hover:underline">
-                Esqueceu sua senha?
-              </a>
+            <div className="text-center">
               <div className="text-sm text-muted-foreground">
-                Ainda não tem conta?{" "}
+                Não tem conta?{" "}
                 <a href="/register" className="text-primary hover:underline">
-                  Cadastre seu salão
+                  Cadastre-se
                 </a>
               </div>
             </div>

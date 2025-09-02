@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+// import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, MapPin } from 'lucide-react';
-import { supabaseApi, type User } from '@/services/supabase-api';
+import { Calendar, Clock, User, Phone, Mail, Scissors, MapPin } from 'lucide-react';
+import { salonService, serviceService, professionalService, appointmentService, type Salon, type Service, type Professional } from '@/services/supabase-api';
 
 const Agendamento = () => {
-  const { salonId } = useParams<{ salonId: string }>();
+  // Extrair salonId da URL manualmente
+  const salonId = window.location.pathname.split('/agendamento/')[1] || 'default';
   const { toast } = useToast();
-  const [salonInfo, setSalonInfo] = useState<User | null>(null);
+  const [salonInfo, setSalonInfo] = useState<Salon | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
@@ -28,43 +31,42 @@ const Agendamento = () => {
     observations: ""
   });
 
-  const [services, setServices] = useState([
-    { name: "Corte Feminino", duration: "60 min", price: "R$ 50,00" },
-    { name: "Corte Masculino", duration: "30 min", price: "R$ 25,00" },
-    { name: "Escova", duration: "45 min", price: "R$ 35,00" },
-    { name: "Manicure", duration: "60 min", price: "R$ 30,00" },
-    { name: "Pedicure", duration: "60 min", price: "R$ 35,00" },
-    { name: "Coloração", duration: "120 min", price: "R$ 80,00" }
-  ]);
 
-  const [professionals, setProfessionals] = useState([
-    "Ana Silva - Cabelereiro",
-    "Carlos Santos - Barbeiro", 
-    "Lucia Costa - Manicure",
-    "Pedro Oliveira - Cabelereiro"
-  ]);
 
-  // Carregar informações do salão usando Supabase
+  // Carregar informações do salão usando o novo esquema
   useEffect(() => {
-    const loadSalonInfo = async () => {
+    const loadSalonData = async () => {
       if (!salonId) {
         setLoading(false);
         return;
       }
 
       try {
-        const response = await supabaseApi.users.getProfile(salonId);
-        if (response.success) {
-          setSalonInfo(response.data);
+        // Carregar informações do salão
+        const salonResponse = await salonService.getBySlug(salonId);
+        if (salonResponse.success && salonResponse.data) {
+          setSalonInfo(salonResponse.data);
+          
+          // Carregar serviços do salão
+          const servicesResponse = await serviceService.getBySalonId(salonResponse.data.id);
+          if (servicesResponse.success && servicesResponse.data) {
+            setServices(servicesResponse.data);
+          }
+          
+          // Carregar profissionais do salão
+          const professionalsResponse = await professionalService.getBySalonId(salonResponse.data.id);
+          if (professionalsResponse.success && professionalsResponse.data) {
+            setProfessionals(professionalsResponse.data);
+          }
         } else {
           toast({
             title: "Erro",
-            description: "Erro ao carregar informações do salão",
+            description: "Salão não encontrado",
             variant: "destructive"
           });
         }
       } catch (error) {
-        console.error('Erro ao carregar informações do salão:', error);
+        console.error('Erro ao carregar dados do salão:', error);
         toast({
           title: "Erro",
           description: "Erro ao carregar informações do salão",
@@ -75,27 +77,8 @@ const Agendamento = () => {
       }
     };
 
-    loadSalonInfo();
-
-    if (salonId) {
-      const savedServices = localStorage.getItem(`services_${salonId}`);
-      const savedProfessionals = localStorage.getItem(`professionals_${salonId}`);
-      
-      if (savedServices) {
-        const parsedServices = JSON.parse(savedServices);
-        if (parsedServices.length > 0) {
-          setServices(parsedServices);
-        }
-      }
-      
-      if (savedProfessionals) {
-        const parsedProfessionals = JSON.parse(savedProfessionals);
-        if (parsedProfessionals.length > 0) {
-          setProfessionals(parsedProfessionals.map(p => `${p.name} - ${p.specialty}`));
-        }
-      }
-    }
-  }, [salonId]);
+    loadSalonData();
+  }, [salonId, toast]);
 
   const timeSlots = [
     "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -105,10 +88,11 @@ const Agendamento = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!salonId) {
+    // Validar campos obrigatórios
+    if (!formData.clientName || !formData.phone || !formData.service || !formData.date || !formData.time) {
       toast({
         title: "Erro",
-        description: "ID do salão não encontrado",
+        description: "Por favor, preencha todos os campos obrigatórios (Nome, Telefone, Serviço, Data e Horário)",
         variant: "destructive"
       });
       return;
@@ -117,17 +101,17 @@ const Agendamento = () => {
     setSubmitting(true);
     
     try {
-      const response = await supabaseApi.appointments.create({
-        user_id: salonId,
-        client_name: formData.clientName,
-        client_email: formData.email,
-        client_phone: formData.phone,
-        service: formData.service,
-        professional: formData.professional,
-        appointment_date: formData.date,
-        appointment_time: formData.time,
-        observations: formData.observations,
-        status: 'pending'
+      // Usar o novo serviço simplificado
+      const response = await appointmentService.createSimple({
+        salonSlug: salonId,
+        clientName: formData.clientName,
+        clientEmail: formData.email || formData.clientName.toLowerCase().replace(/\s+/g, '') + '@email.com',
+        clientPhone: formData.phone,
+        serviceName: formData.service,
+        professionalName: formData.professional || undefined,
+        appointmentDate: formData.date,
+        appointmentTime: formData.time,
+        observations: formData.observations || undefined
       });
       
       if (response.success) {
@@ -288,9 +272,9 @@ const Agendamento = () => {
                       required
                     >
                       <option value="">Selecione um serviço</option>
-                      {services.map((service, index) => (
-                        <option key={index} value={service.name}>
-                          {service.name} - {service.price}
+                      {services.map((service) => (
+                        <option key={service.id} value={service.name}>
+                          {service.name} - {service.duration}min - R$ {service.price.toFixed(2)}
                         </option>
                       ))}
                     </select>
@@ -304,8 +288,10 @@ const Agendamento = () => {
                       onChange={(e) => setFormData({...formData, professional: e.target.value})}
                     >
                       <option value="">Sem preferência</option>
-                      {professionals.map((prof, index) => (
-                        <option key={index} value={prof}>{prof}</option>
+                      {professionals.map((professional) => (
+                        <option key={professional.id} value={professional.name}>
+                          {professional.name} - {professional.specialty}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -343,12 +329,12 @@ const Agendamento = () => {
 
                 {/* Notes */}
                 <div>
-                  <Label htmlFor="observations">Observações</Label>
+                  <Label htmlFor="notes">Observações</Label>
                   <Textarea
-                    id="observations"
+                    id="notes"
                     placeholder="Alguma observação especial?"
-                    value={formData.observations}
-                    onChange={(e) => setFormData({...formData, observations: e.target.value})}
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
                     rows={3}
                   />
                 </div>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Tabelas Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Teste de Tabelas do Supabase</h1>
+    
+    <button onclick="testConnection()">1. Testar Conexão</button>
+    <button onclick="checkTables()">2. Verificar Tabelas</button>
+    <button onclick="testAuth()">3. Testar Autenticação</button>
+    <button onclick="checkProfile()">4. Verificar Perfil</button>
+    <button onclick="createTestProfile()">5. Criar Perfil Teste</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://ofpuhlkkvzrxidqkwvyp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcHVobGtrdnpyeGlkcWt3dnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3Mzk0NjYsImV4cCI6MjA3MjMxNTQ2Nn0.1TrRrNSAIzoE1NGF9GUFbPA7hUUHr4x6v1KgjDGbWG0';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function testConnection() {
+            try {
+                addResult('Testando conexão com Supabase...', 'info');
+                const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    addResult(`Erro na conexão: ${error.message}`, 'error');
+                } else {
+                    addResult('Conexão com Supabase estabelecida com sucesso!', 'success');
+                }
+            } catch (err) {
+                addResult(`Erro inesperado: ${err.message}`, 'error');
+            }
+        }
+        
+        async function checkTables() {
+            const tables = ['profiles', 'salons', 'services', 'appointments'];
+            
+            for (const table of tables) {
+                try {
+                    addResult(`Verificando tabela '${table}'...`, 'info');
+                    const { data, error } = await supabase.from(table).select('*').limit(1);
+                    
+                    if (error) {
+                        addResult(`❌ Tabela '${table}': ${error.message}`, 'error');
+                    } else {
+                        addResult(`✅ Tabela '${table}' existe e está acessível`, 'success');
+                    }
+                } catch (err) {
+                    addResult(`❌ Erro ao verificar tabela '${table}': ${err.message}`, 'error');
+                }
+            }
+        }
+        
+        async function testAuth() {
+            try {
+                addResult('Verificando usuário autenticado...', 'info');
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    addResult(`Erro na autenticação: ${error.message}`, 'error');
+                } else if (user) {
+                    addResult(`✅ Usuário autenticado: ${user.email} (ID: ${user.id})`, 'success');
+                } else {
+                    addResult('❌ Nenhum usuário autenticado', 'error');
+                }
+            } catch (err) {
+                addResult(`Erro inesperado na autenticação: ${err.message}`, 'error');
+            }
+        }
+        
+        async function checkProfile() {
+            try {
+                addResult('Verificando perfil do usuário...', 'info');
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (!user) {
+                    addResult('❌ Usuário não autenticado', 'error');
+                    return;
+                }
+                
+                const { data: profile, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (error) {
+                    addResult(`❌ Erro ao buscar perfil: ${error.message}`, 'error');
+                } else if (profile) {
+                    addResult(`✅ Perfil encontrado: ${JSON.stringify(profile, null, 2)}`, 'success');
+                } else {
+                    addResult('❌ Perfil não encontrado para o usuário atual', 'error');
+                }
+            } catch (err) {
+                addResult(`Erro inesperado ao verificar perfil: ${err.message}`, 'error');
+            }
+        }
+        
+        async function createTestProfile() {
+            try {
+                addResult('Tentando criar perfil de teste...', 'info');
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (!user) {
+                    addResult('❌ Usuário não autenticado', 'error');
+                    return;
+                }
+                
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: user.id,
+                        email: user.email,
+                        name: user.user_metadata?.name || 'Usuário Teste',
+                        user_type: 'client'
+                    })
+                    .select()
+                    .single();
+                
+                if (error) {
+                    addResult(`❌ Erro ao criar perfil: ${error.message}`, 'error');
+                } else {
+                    addResult(`✅ Perfil criado com sucesso: ${JSON.stringify(data, null, 2)}`, 'success');
+                }
+            } catch (err) {
+                addResult(`Erro inesperado ao criar perfil: ${err.message}`, 'error');
+            }
+        }
+        
+        // Executar teste inicial
+        window.onload = function() {
+            addResult('Página carregada. Clique nos botões para executar os testes.', 'info');
+        };
+    </script>
+</body>
+</html>

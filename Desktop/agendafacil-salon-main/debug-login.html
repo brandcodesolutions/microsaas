@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Login - AgendaFácil</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug Login - AgendaFácil</h1>
+        <p>Este arquivo ajuda a diagnosticar problemas de login no sistema.</p>
+        
+        <div id="status"></div>
+        
+        <div>
+            <button onclick="testConnection()">🔗 Testar Conexão</button>
+            <button onclick="checkAuthSettings()">⚙️ Verificar Configurações</button>
+            <button onclick="listUsers()">👥 Listar Usuários</button>
+            <button onclick="clearResults()">🧹 Limpar</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <div class="container">
+        <h2>🔐 Teste de Login</h2>
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" placeholder="seu@email.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Senha:</label>
+            <input type="password" id="password" placeholder="sua senha">
+        </div>
+        <div>
+            <button onclick="testLogin()" id="loginBtn">🔑 Testar Login</button>
+            <button onclick="testRegister()" id="registerBtn">📝 Testar Registro</button>
+            <button onclick="checkCurrentUser()">👤 Verificar Usuário Atual</button>
+            <button onclick="logout()">🚪 Logout</button>
+        </div>
+        <div id="loginResults"></div>
+    </div>
+
+    <div class="container">
+        <h2>📊 Verificar Schema</h2>
+        <button onclick="checkSchema()">🔍 Verificar Tabelas</button>
+        <div id="schemaResults"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://ofpuhlkkvzrxidqkwvyp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcHVobGtrdnpyeGlkcWt3dnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3Mzk0NjYsImV4cCI6MjA3MjMxNTQ2Nn0.1TrRrNSAIzoE1NGF9GUFbPA7hUUHr4x6v1KgjDGbWG0';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        function addResult(message, type = 'info', containerId = 'results') {
+            const results = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('loginResults').innerHTML = '';
+            document.getElementById('schemaResults').innerHTML = '';
+            document.getElementById('status').innerHTML = '';
+        }
+        
+        async function testConnection() {
+            addResult('🔄 Testando conexão com Supabase...', 'info');
+            
+            try {
+                const { data, error } = await supabase.from('salons').select('count').limit(1);
+                
+                if (error) {
+                    addResult(`❌ Erro na conexão: ${error.message}`, 'error');
+                    addResult(`<pre>Detalhes do erro: ${JSON.stringify(error, null, 2)}</pre>`, 'error');
+                } else {
+                    addResult('✅ Conexão com Supabase funcionando!', 'success');
+                }
+            } catch (err) {
+                addResult(`❌ Erro de conexão: ${err.message}`, 'error');
+            }
+        }
+        
+        async function checkAuthSettings() {
+            addResult('🔄 Verificando configurações de autenticação...', 'info');
+            
+            try {
+                // Tentar obter configurações públicas
+                const { data: { session } } = await supabase.auth.getSession();
+                addResult(`📋 Sessão atual: ${session ? 'Ativa' : 'Nenhuma'}`, 'info');
+                
+                if (session) {
+                    addResult(`<pre>Dados da sessão: ${JSON.stringify(session, null, 2)}</pre>`, 'info');
+                }
+                
+                // Verificar se consegue acessar auth.users (isso pode falhar por segurança)
+                const { data: users, error } = await supabase.from('auth.users').select('*').limit(1);
+                if (error) {
+                    addResult(`ℹ️ Não é possível acessar auth.users diretamente (normal por segurança)`, 'info');
+                } else {
+                    addResult(`📊 Conseguiu acessar auth.users`, 'success');
+                }
+                
+            } catch (err) {
+                addResult(`❌ Erro ao verificar configurações: ${err.message}`, 'error');
+            }
+        }
+        
+        async function listUsers() {
+            addResult('🔄 Tentando listar usuários...', 'info');
+            
+            try {
+                // Tentar listar perfis de usuário
+                const { data: profiles, error } = await supabase.from('user_profiles').select('*');
+                
+                if (error) {
+                    addResult(`❌ Erro ao listar perfis: ${error.message}`, 'error');
+                } else {
+                    addResult(`✅ Encontrados ${profiles.length} perfis de usuário`, 'success');
+                    if (profiles.length > 0) {
+                        addResult(`<pre>${JSON.stringify(profiles, null, 2)}</pre>`, 'info');
+                    }
+                }
+            } catch (err) {
+                addResult(`❌ Erro: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                addResult('⚠️ Por favor, preencha email e senha', 'warning', 'loginResults');
+                return;
+            }
+            
+            addResult('🔄 Tentando fazer login...', 'info', 'loginResults');
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro no login: ${error.message}`, 'error', 'loginResults');
+                    addResult(`<pre>Detalhes: ${JSON.stringify(error, null, 2)}</pre>`, 'error', 'loginResults');
+                } else {
+                    addResult('✅ Login realizado com sucesso!', 'success', 'loginResults');
+                    addResult(`<pre>Dados do usuário: ${JSON.stringify(data.user, null, 2)}</pre>`, 'success', 'loginResults');
+                }
+            } catch (err) {
+                addResult(`❌ Erro inesperado: ${err.message}`, 'error', 'loginResults');
+            }
+        }
+        
+        async function testRegister() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                addResult('⚠️ Por favor, preencha email e senha', 'warning', 'loginResults');
+                return;
+            }
+            
+            addResult('🔄 Tentando registrar usuário...', 'info', 'loginResults');
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: 'Usuário Teste'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro no registro: ${error.message}`, 'error', 'loginResults');
+                    addResult(`<pre>Detalhes: ${JSON.stringify(error, null, 2)}</pre>`, 'error', 'loginResults');
+                } else {
+                    addResult('✅ Registro realizado com sucesso!', 'success', 'loginResults');
+                    addResult(`<pre>Dados: ${JSON.stringify(data, null, 2)}</pre>`, 'success', 'loginResults');
+                }
+            } catch (err) {
+                addResult(`❌ Erro inesperado: ${err.message}`, 'error', 'loginResults');
+            }
+        }
+        
+        async function checkCurrentUser() {
+            addResult('🔄 Verificando usuário atual...', 'info', 'loginResults');
+            
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                
+                if (user) {
+                    addResult('✅ Usuário logado encontrado!', 'success', 'loginResults');
+                    addResult(`<pre>${JSON.stringify(user, null, 2)}</pre>`, 'success', 'loginResults');
+                } else {
+                    addResult('ℹ️ Nenhum usuário logado', 'info', 'loginResults');
+                }
+            } catch (err) {
+                addResult(`❌ Erro: ${err.message}`, 'error', 'loginResults');
+            }
+        }
+        
+        async function logout() {
+            addResult('🔄 Fazendo logout...', 'info', 'loginResults');
+            
+            try {
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    addResult(`❌ Erro no logout: ${error.message}`, 'error', 'loginResults');
+                } else {
+                    addResult('✅ Logout realizado com sucesso!', 'success', 'loginResults');
+                }
+            } catch (err) {
+                addResult(`❌ Erro: ${err.message}`, 'error', 'loginResults');
+            }
+        }
+        
+        async function checkSchema() {
+            addResult('🔄 Verificando schema do banco...', 'info', 'schemaResults');
+            
+            const tables = ['salons', 'services', 'professionals', 'user_profiles', 'appointments'];
+            
+            for (const table of tables) {
+                try {
+                    const { data, error } = await supabase.from(table).select('*').limit(3);
+                    
+                    if (error) {
+                        addResult(`❌ Tabela '${table}': ${error.message}`, 'error', 'schemaResults');
+                    } else {
+                        addResult(`✅ Tabela '${table}': OK (${data.length} registros encontrados)`, 'success', 'schemaResults');
+                        if (data.length > 0) {
+                            addResult(`<pre>Exemplo de dados: ${JSON.stringify(data[0], null, 2)}</pre>`, 'info', 'schemaResults');
+                        }
+                    }
+                } catch (err) {
+                    addResult(`❌ Tabela '${table}': ${err.message}`, 'error', 'schemaResults');
+                }
+            }
+        }
+        
+        // Teste automático ao carregar
+        window.onload = function() {
+            document.getElementById('status').innerHTML = '<div class="status info">📋 Debug Login carregado! Use os botões para diagnosticar problemas.</div>';
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Teste Completo - AgendaFácil Salon</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 8px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: translateY(-2px); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        pre {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #48bb78; }
+        .status-error { background-color: #f56565; }
+        .status-pending { background-color: #ed8936; }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+        .form-row > div {
+            flex: 1;
+        }
+        h1 { color: #2d3748; text-align: center; }
+        h2 { color: #4a5568; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste Completo do Sistema - AgendaFácil Salon</h1>
+        
+        <div class="test-section info">
+            <h2>📋 Status dos Testes</h2>
+            <div id="test-status">
+                <div><span class="status-indicator status-pending"></span>1. Conexão com Supabase</div>
+                <div><span class="status-indicator status-pending"></span>2. Verificação das Tabelas</div>
+                <div><span class="status-indicator status-pending"></span>3. Registro de Usuário</div>
+                <div><span class="status-indicator status-pending"></span>4. Login de Usuário</div>
+                <div><span class="status-indicator status-pending"></span>5. Carregamento do Salão</div>
+                <div><span class="status-indicator status-pending"></span>6. Criação de Agendamento</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔌 1. Teste de Conexão</h2>
+            <button onclick="testConnection()">Testar Conexão</button>
+            <div id="connection-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🗄️ 2. Verificar Schema V2</h2>
+            <button onclick="checkSchemaV2()">Verificar Tabelas do Schema V2</button>
+            <div id="schema-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>👤 3. Teste de Registro</h2>
+            <div class="form-row">
+                <div>
+                    <input type="text" id="salon-name" placeholder="Nome do Salão" value="Salão Teste Auto">
+                    <input type="text" id="owner-name" placeholder="Nome do Proprietário" value="João Silva">
+                    <input type="email" id="email" placeholder="Email" value="teste@exemplo.com">
+                </div>
+                <div>
+                    <input type="password" id="password" placeholder="Senha" value="123456">
+                    <input type="tel" id="phone" placeholder="Telefone" value="(11) 99999-9999">
+                    <input type="text" id="address" placeholder="Endereço" value="Rua Teste, 123">
+                </div>
+            </div>
+            <textarea id="description" placeholder="Descrição do salão" rows="2">Salão de teste criado automaticamente pelo sistema</textarea>
+            <button onclick="testRegistration()">🚀 Registrar Usuário</button>
+            <div id="register-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔐 4. Teste de Login</h2>
+            <div class="form-row">
+                <div>
+                    <input type="email" id="login-email" placeholder="Email" value="teste@exemplo.com">
+                </div>
+                <div>
+                    <input type="password" id="login-password" placeholder="Senha" value="123456">
+                </div>
+            </div>
+            <button onclick="testLogin()">🔑 Fazer Login</button>
+            <div id="login-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🏢 5. Teste de Carregamento do Salão</h2>
+            <button onclick="testSalonLoading()">📊 Carregar Dados do Salão</button>
+            <div id="salon-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>📅 6. Teste de Agendamento</h2>
+            <div class="form-row">
+                <div>
+                    <input type="text" id="client-name" placeholder="Nome do Cliente" value="Maria Santos">
+                    <input type="email" id="client-email" placeholder="Email do Cliente" value="maria@exemplo.com">
+                    <input type="tel" id="client-phone" placeholder="Telefone do Cliente" value="(11) 88888-8888">
+                </div>
+                <div>
+                    <select id="service-select">
+                        <option value="">Selecione um serviço</option>
+                    </select>
+                    <select id="professional-select">
+                        <option value="">Selecione um profissional</option>
+                    </select>
+                    <input type="date" id="appointment-date">
+                    <input type="time" id="appointment-time" value="14:00">
+                </div>
+            </div>
+            <textarea id="observations" placeholder="Observações" rows="2">Teste de agendamento automático</textarea>
+            <button onclick="testAppointment()">📅 Criar Agendamento</button>
+            <div id="appointment-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://ofpuhlkkvzrxidqkwvyp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcHVobGtrdnpyeGlkcWt3dnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3Mzk0NjYsImV4cCI6MjA3MjMxNTQ2Nn0.1TrRrNSAIzoE1NGF9GUFbPA7hUUHr4x6v1KgjDGbWG0';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let currentUser = null;
+        let currentSalon = null;
+        let services = [];
+        let professionals = [];
+
+        function updateTestStatus(testNumber, status) {
+            const indicators = document.querySelectorAll('.status-indicator');
+            if (indicators[testNumber - 1]) {
+                indicators[testNumber - 1].className = `status-indicator status-${status}`;
+            }
+        }
+
+        function showResult(elementId, content, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = content;
+            element.className = `test-section ${type}`;
+        }
+
+        async function testConnection() {
+            try {
+                showResult('connection-result', '🔄 Testando conexão...', 'info');
+                
+                const { data, error } = await supabase.from('salons').select('count').limit(1);
+                
+                if (error) {
+                    showResult('connection-result', `❌ Erro na conexão: ${error.message}`, 'error');
+                    updateTestStatus(1, 'error');
+                } else {
+                    showResult('connection-result', '✅ Conexão com Supabase estabelecida com sucesso!', 'success');
+                    updateTestStatus(1, 'success');
+                }
+            } catch (err) {
+                showResult('connection-result', `❌ Erro: ${err.message}`, 'error');
+                updateTestStatus(1, 'error');
+            }
+        }
+
+        async function checkSchemaV2() {
+            try {
+                showResult('schema-result', '🔄 Verificando schema V2...', 'info');
+                
+                const tables = [
+                    { name: 'salons', description: 'Salões de beleza' },
+                    { name: 'services', description: 'Serviços oferecidos' },
+                    { name: 'professionals', description: 'Profissionais' },
+                    { name: 'user_profiles', description: 'Perfis de usuário' },
+                    { name: 'appointments', description: 'Agendamentos' }
+                ];
+                
+                const results = [];
+                let allOk = true;
+                
+                for (const table of tables) {
+                    try {
+                        const { data, error } = await supabase.from(table.name).select('count').limit(1);
+                        if (error) {
+                            results.push(`❌ ${table.name}: ${error.message}`);
+                            allOk = false;
+                        } else {
+                            results.push(`✅ ${table.name}: OK (${table.description})`);
+                        }
+                    } catch (err) {
+                        results.push(`❌ ${table.name}: ${err.message}`);
+                        allOk = false;
+                    }
+                }
+                
+                showResult('schema-result', `<pre>${results.join('\n')}</pre>`, allOk ? 'success' : 'error');
+                updateTestStatus(2, allOk ? 'success' : 'error');
+                
+                if (allOk) {
+                    // Carregar dados padrão
+                    await loadDefaultData();
+                }
+            } catch (err) {
+                showResult('schema-result', `❌ Erro: ${err.message}`, 'error');
+                updateTestStatus(2, 'error');
+            }
+        }
+
+        async function loadDefaultData() {
+            try {
+                // Buscar salão padrão
+                const { data: defaultSalon } = await supabase
+                    .from('salons')
+                    .select('*')
+                    .eq('slug', 'default')
+                    .single();
+                
+                if (defaultSalon) {
+                    currentSalon = defaultSalon;
+                    
+                    // Carregar serviços
+                    const { data: servicesData } = await supabase
+                        .from('services')
+                        .select('*')
+                        .eq('salon_id', defaultSalon.id)
+                        .eq('is_active', true);
+                    
+                    services = servicesData || [];
+                    
+                    // Carregar profissionais
+                    const { data: professionalsData } = await supabase
+                        .from('professionals')
+                        .select('*')
+                        .eq('salon_id', defaultSalon.id)
+                        .eq('is_active', true);
+                    
+                    professionals = professionalsData || [];
+                    
+                    // Preencher selects
+                    populateSelects();
+                }
+            } catch (err) {
+                console.error('Erro ao carregar dados padrão:', err);
+            }
+        }
+
+        function populateSelects() {
+            const serviceSelect = document.getElementById('service-select');
+            const professionalSelect = document.getElementById('professional-select');
+            
+            // Limpar e preencher serviços
+            serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
+            services.forEach(service => {
+                const option = document.createElement('option');
+                option.value = service.id;
+                option.textContent = `${service.name} - R$ ${(service.price_cents / 100).toFixed(2)}`;
+                serviceSelect.appendChild(option);
+            });
+            
+            // Limpar e preencher profissionais
+            professionalSelect.innerHTML = '<option value="">Selecione um profissional</option>';
+            professionals.forEach(professional => {
+                const option = document.createElement('option');
+                option.value = professional.id;
+                option.textContent = professional.name + (professional.specialty ? ` (${professional.specialty})` : '');
+                professionalSelect.appendChild(option);
+            });
+        }
+
+        async function testRegistration() {
+            try {
+                showResult('register-result', '🔄 Registrando usuário...', 'info');
+                
+                const salonName = document.getElementById('salon-name').value;
+                const ownerName = document.getElementById('owner-name').value;
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const phone = document.getElementById('phone').value;
+                const address = document.getElementById('address').value;
+                const description = document.getElementById('description').value;
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: salonName,
+                            owner_name: ownerName,
+                            phone: phone,
+                            address: address,
+                            description: description
+                        }
+                    }
+                });
+                
+                if (error) {
+                    showResult('register-result', `❌ Erro no registro: ${error.message}`, 'error');
+                    updateTestStatus(3, 'error');
+                } else {
+                    currentUser = data.user;
+                    showResult('register-result', `✅ Usuário registrado com sucesso!\n<strong>ID:</strong> ${data.user.id}\n<strong>Email:</strong> ${data.user.email}`, 'success');
+                    updateTestStatus(3, 'success');
+                    
+                    // Aguardar trigger criar o salão
+                    setTimeout(async () => {
+                        await checkUserSalon();
+                    }, 3000);
+                }
+            } catch (err) {
+                showResult('register-result', `❌ Erro: ${err.message}`, 'error');
+                updateTestStatus(3, 'error');
+            }
+        }
+
+        async function testLogin() {
+            try {
+                showResult('login-result', '🔄 Fazendo login...', 'info');
+                
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+                
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    showResult('login-result', `❌ Erro no login: ${error.message}`, 'error');
+                    updateTestStatus(4, 'error');
+                } else {
+                    currentUser = data.user;
+                    showResult('login-result', `✅ Login realizado com sucesso!\n<strong>Usuário:</strong> ${data.user.email}`, 'success');
+                    updateTestStatus(4, 'success');
+                }
+            } catch (err) {
+                showResult('login-result', `❌ Erro: ${err.message}`, 'error');
+                updateTestStatus(4, 'error');
+            }
+        }
+
+        async function testSalonLoading() {
+            if (!currentUser) {
+                showResult('salon-result', '❌ Faça login primeiro', 'error');
+                return;
+            }
+            
+            await checkUserSalon();
+        }
+
+        async function checkUserSalon() {
+            try {
+                showResult('salon-result', '🔄 Carregando dados do salão...', 'info');
+                
+                // Buscar perfil do usuário com salão
+                const { data: profile, error: profileError } = await supabase
+                    .from('user_profiles')
+                    .select(`
+                        *,
+                        salons (
+                            id, slug, name, email, phone, address, description
+                        )
+                    `)
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (profileError) {
+                    showResult('salon-result', `❌ Erro ao buscar perfil: ${profileError.message}`, 'error');
+                    updateTestStatus(5, 'error');
+                    return;
+                }
+                
+                if (!profile.salons) {
+                    showResult('salon-result', '❌ Salão não encontrado para o usuário', 'error');
+                    updateTestStatus(5, 'error');
+                    return;
+                }
+                
+                currentSalon = profile.salons;
+                
+                // Buscar serviços e profissionais
+                const [servicesResult, professionalsResult] = await Promise.all([
+                    supabase.from('services').select('*').eq('salon_id', profile.salon_id),
+                    supabase.from('professionals').select('*').eq('salon_id', profile.salon_id)
+                ]);
+                
+                services = servicesResult.data || [];
+                professionals = professionalsResult.data || [];
+                
+                populateSelects();
+                
+                const result = {
+                    profile: profile,
+                    salon: profile.salons,
+                    services: services.length,
+                    professionals: professionals.length
+                };
+                
+                showResult('salon-result', 
+                    `✅ Dados carregados com sucesso!\n` +
+                    `<strong>Salão:</strong> ${profile.salons.name}\n` +
+                    `<strong>Slug:</strong> ${profile.salons.slug}\n` +
+                    `<strong>Serviços:</strong> ${services.length}\n` +
+                    `<strong>Profissionais:</strong> ${professionals.length}`, 
+                    'success'
+                );
+                updateTestStatus(5, 'success');
+                
+            } catch (err) {
+                showResult('salon-result', `❌ Erro: ${err.message}`, 'error');
+                updateTestStatus(5, 'error');
+            }
+        }
+
+        async function testAppointment() {
+            if (!currentSalon) {
+                showResult('appointment-result', '❌ Carregue os dados do salão primeiro', 'error');
+                return;
+            }
+            
+            try {
+                showResult('appointment-result', '🔄 Criando agendamento...', 'info');
+                
+                const clientName = document.getElementById('client-name').value;
+                const clientEmail = document.getElementById('client-email').value;
+                const clientPhone = document.getElementById('client-phone').value;
+                const serviceId = document.getElementById('service-select').value;
+                const professionalId = document.getElementById('professional-select').value;
+                const appointmentDate = document.getElementById('appointment-date').value;
+                const appointmentTime = document.getElementById('appointment-time').value;
+                const observations = document.getElementById('observations').value;
+                
+                if (!serviceId) {
+                    showResult('appointment-result', '❌ Selecione um serviço', 'error');
+                    return;
+                }
+                
+                const selectedService = services.find(s => s.id === serviceId);
+                const selectedProfessional = professionals.find(p => p.id === professionalId);
+                
+                const appointmentData = {
+                    salon_id: currentSalon.id,
+                    service_id: serviceId,
+                    professional_id: professionalId || null,
+                    user_id: currentUser?.id || null,
+                    client_name: clientName,
+                    client_email: clientEmail,
+                    client_phone: clientPhone,
+                    service_name: selectedService.name,
+                    professional_name: selectedProfessional?.name || null,
+                    appointment_date: appointmentDate,
+                    appointment_time: appointmentTime,
+                    duration_minutes: selectedService.duration_minutes,
+                    price_cents: selectedService.price_cents,
+                    observations: observations,
+                    status: 'pending'
+                };
+                
+                const { data, error } = await supabase
+                    .from('appointments')
+                    .insert([appointmentData])
+                    .select()
+                    .single();
+                
+                if (error) {
+                    showResult('appointment-result', `❌ Erro ao criar agendamento: ${error.message}`, 'error');
+                    updateTestStatus(6, 'error');
+                } else {
+                    showResult('appointment-result', 
+                        `✅ Agendamento criado com sucesso!\n` +
+                        `<strong>ID:</strong> ${data.id}\n` +
+                        `<strong>Cliente:</strong> ${data.client_name}\n` +
+                        `<strong>Serviço:</strong> ${data.service_name}\n` +
+                        `<strong>Data:</strong> ${data.appointment_date} às ${data.appointment_time}\n` +
+                        `<strong>Valor:</strong> R$ ${(data.price_cents / 100).toFixed(2)}`, 
+                        'success'
+                    );
+                    updateTestStatus(6, 'success');
+                }
+            } catch (err) {
+                showResult('appointment-result', `❌ Erro: ${err.message}`, 'error');
+                updateTestStatus(6, 'error');
+            }
+        }
+
+        // Configurar data padrão para hoje
+        document.getElementById('appointment-date').value = new Date().toISOString().split('T')[0];
+
+        // Verificar se há usuário logado ao carregar
+        window.addEventListener('load', async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                currentUser = user;
+                showResult('login-result', `ℹ️ Usuário já logado: ${user.email}`, 'info');
+                updateTestStatus(4, 'success');
+            }
+        });
+
+        // Auto-executar testes básicos
+        setTimeout(() => {
+            testConnection();
+            setTimeout(() => {
+                checkSchemaV2();
+            }, 1000);
+        }, 500);
+    </script>
+</body>
+</html>

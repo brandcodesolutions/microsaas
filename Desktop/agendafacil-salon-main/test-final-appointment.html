@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Final - Agendamento</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste Final - Sistema de Agendamento</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Status do Teste</h3>
+            <p>Este teste verifica se o sistema de agendamento está funcionando corretamente após as correções.</p>
+            <p><strong>Projeto Supabase:</strong> ofpuhlkkvzrxidqkwvyp</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 Testes Disponíveis</h3>
+            <button onclick="testSupabaseConnection()">1. Testar Conexão Supabase</button>
+            <button onclick="testTablesExist()">2. Verificar Tabelas</button>
+            <button onclick="testAppointmentCreation()">3. Testar Criação de Agendamento</button>
+            <button onclick="openAppointmentPage()">4. Abrir Página de Agendamento</button>
+        </div>
+
+        <div id="results" class="test-section"></div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        
+        const supabaseUrl = 'https://ofpuhlkkvzrxidqkwvyp.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcHVobGtrdnpyeGlkcWt3dnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3Mzg5NzQsImV4cCI6MjA3MjMxNDk3NH0.Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw6Ej-Aw

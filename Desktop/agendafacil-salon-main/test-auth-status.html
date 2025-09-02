@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Status de Autenticação</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 250px; }
+        .auth-form { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>Teste de Status de Autenticação</h1>
+    
+    <button onclick="checkAuthStatus()">1. Verificar Status de Autenticação</button>
+    <button onclick="clearSession()">2. Limpar Sessão</button>
+    
+    <div class="auth-form">
+        <h3>Login de Teste</h3>
+        <input type="email" id="email" placeholder="Email" value="">
+        <input type="password" id="password" placeholder="Senha" value="">
+        <br>
+        <button onclick="testLogin()">3. Fazer Login</button>
+        <button onclick="testSignup()">4. Criar Conta</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://ofpuhlkkvzrxidqkwvyp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcHVobGtrdnpyeGlkcWt3dnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3Mzk0NjYsImV4cCI6MjA3MjMxNTQ2Nn0.1TrRrNSAIzoE1NGF9GUFbPA7hUUHr4x6v1KgjDGbWG0';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+        }
+        
+        async function checkAuthStatus() {
+            try {
+                addResult('Verificando status de autenticação...', 'info');
+                
+                // Verificar sessão atual
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError) {
+                    addResult(`❌ Erro ao verificar sessão: ${sessionError.message}`, 'error');
+                    return;
+                }
+                
+                if (session) {
+                    addResult(`✅ Usuário autenticado: ${session.user.email}`, 'success');
+                    addResult(`📋 ID do usuário: ${session.user.id}`, 'info');
+                    addResult(`⏰ Sessão expira em: ${new Date(session.expires_at * 1000).toLocaleString()}`, 'info');
+                    
+                    // Verificar se o perfil existe
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+                    
+                    if (profileError) {
+                        addResult(`❌ Erro ao buscar perfil: ${profileError.message}`, 'error');
+                    } else if (profile) {
+                        addResult(`✅ Perfil encontrado: ${profile.name} (${profile.email})`, 'success');
+                    } else {
+                        addResult(`⚠️ Perfil não encontrado para o usuário`, 'warning');
+                    }
+                } else {
+                    addResult('❌ Nenhum usuário autenticado (Auth session missing!)', 'error');
+                    addResult('💡 Você precisa fazer login primeiro', 'warning');
+                }
+                
+            } catch (err) {
+                addResult(`Erro inesperado: ${err.message}`, 'error');
+            }
+        }
+        
+        async function clearSession() {
+            try {
+                addResult('Limpando sessão...', 'info');
+                const { error } = await supabase.auth.signOut();
+                
+                if (error) {
+                    addResult(`❌ Erro ao limpar sessão: ${error.message}`, 'error');
+                } else {
+                    addResult('✅ Sessão limpa com sucesso', 'success');
+                }
+            } catch (err) {
+                addResult(`Erro inesperado: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                addResult('❌ Por favor, preencha email e senha', 'error');
+                return;
+            }
+            
+            try {
+                addResult(`Tentando fazer login com: ${email}`, 'info');
+                
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro no login: ${error.message}`, 'error');
+                } else {
+                    addResult(`✅ Login realizado com sucesso!`, 'success');
+                    addResult(`📧 Usuário: ${data.user.email}`, 'info');
+                    
+                    // Verificar perfil após login
+                    setTimeout(() => checkAuthStatus(), 1000);
+                }
+            } catch (err) {
+                addResult(`Erro inesperado no login: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testSignup() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                addResult('❌ Por favor, preencha email e senha', 'error');
+                return;
+            }
+            
+            try {
+                addResult(`Tentando criar conta com: ${email}`, 'info');
+                
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        data: {
+                            name: 'Usuário Teste'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro ao criar conta: ${error.message}`, 'error');
+                } else {
+                    addResult(`✅ Conta criada com sucesso!`, 'success');
+                    if (data.user) {
+                        addResult(`📧 Usuário: ${data.user.email}`, 'info');
+                        addResult(`📋 ID: ${data.user.id}`, 'info');
+                        
+                        if (data.session) {
+                            addResult(`✅ Login automático realizado`, 'success');
+                        } else {
+                            addResult(`⚠️ Verifique seu email para confirmar a conta`, 'warning');
+                        }
+                    }
+                    
+                    // Verificar perfil após registro
+                    setTimeout(() => checkAuthStatus(), 2000);
+                }
+            } catch (err) {
+                addResult(`Erro inesperado no registro: ${err.message}`, 'error');
+            }
+        }
+        
+        // Executar verificação inicial
+        window.onload = function() {
+            addResult('Página carregada. Clique em "Verificar Status" para começar.', 'info');
+            checkAuthStatus();
+        };
+    </script>
+</body>
+</html>

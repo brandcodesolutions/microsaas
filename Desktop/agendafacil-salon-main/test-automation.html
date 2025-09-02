@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Automatizado - AgendaFácil</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+        #log { background: #f8f9fa; padding: 10px; height: 300px; overflow-y: scroll; }
+    </style>
+</head>
+<body>
+    <h1>Teste Automatizado - Fluxo Completo AgendaFácil</h1>
+    
+    <div class="test-section">
+        <h3>Controles de Teste</h3>
+        <button onclick="testFullFlow()">Executar Teste Completo</button>
+        <button onclick="testRegistration()">Testar Registro</button>
+        <button onclick="testLogin()">Testar Login</button>
+        <button onclick="testAppointment()">Testar Agendamento</button>
+        <button onclick="clearLog()">Limpar Log</button>
+    </div>
+    
+    <div class="test-section">
+        <h3>Log de Testes</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8081';
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        async function testRegistration() {
+            log('🔄 Iniciando teste de registro...');
+            try {
+                const response = await fetch(`${API_BASE}/register`, {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    log('✅ Página de registro acessível', 'success');
+                } else {
+                    log('❌ Erro ao acessar página de registro', 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro na requisição de registro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testLogin() {
+            log('🔄 Iniciando teste de login...');
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    log('✅ Página de login acessível', 'success');
+                } else {
+                    log('❌ Erro ao acessar página de login', 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro na requisição de login: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testAppointment() {
+            log('🔄 Iniciando teste de agendamento...');
+            try {
+                const response = await fetch(`${API_BASE}/agendamento/default`, {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    log('✅ Página de agendamento acessível', 'success');
+                } else {
+                    log('❌ Erro ao acessar página de agendamento', 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro na requisição de agendamento: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testFullFlow() {
+            log('🚀 Iniciando teste completo do fluxo...');
+            await testRegistration();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testLogin();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testAppointment();
+            log('✅ Teste completo finalizado', 'success');
+        }
+        
+        // Executar teste inicial
+        window.onload = function() {
+            log('🔧 Sistema de teste carregado');
+            log('📋 Dados de teste disponíveis em test-flow.md');
+        };
+    </script>
+</body>
+</html>

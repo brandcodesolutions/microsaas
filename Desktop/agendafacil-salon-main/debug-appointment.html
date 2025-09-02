@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Agendamento - AgendaFácil</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+        #log { background: #f8f9fa; padding: 10px; height: 400px; overflow-y: scroll; font-family: monospace; }
+        input, select { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Debug do Sistema de Agendamento</h1>
+    
+    <div class="debug-section">
+        <h3>Teste de Agendamento Manual</h3>
+        <form id="appointmentForm">
+            <div>
+                <label>Nome do Cliente:</label><br>
+                <input type="text" id="clientName" value="João Silva" required>
+            </div>
+            <div>
+                <label>Telefone:</label><br>
+                <input type="tel" id="phone" value="(11) 99999-9999" required>
+            </div>
+            <div>
+                <label>Email:</label><br>
+                <input type="email" id="email" value="joao@email.com">
+            </div>
+            <div>
+                <label>Serviço:</label><br>
+                <select id="service" required>
+                    <option value="">Selecione um serviço</option>
+                    <option value="Corte de Cabelo">Corte de Cabelo</option>
+                    <option value="Manicure">Manicure</option>
+                    <option value="Pedicure">Pedicure</option>
+                </select>
+            </div>
+            <div>
+                <label>Profissional:</label><br>
+                <input type="text" id="professional" value="Maria">
+            </div>
+            <div>
+                <label>Data:</label><br>
+                <input type="date" id="date" required>
+            </div>
+            <div>
+                <label>Horário:</label><br>
+                <input type="time" id="time" value="14:00" required>
+            </div>
+            <div>
+                <label>Observações:</label><br>
+                <textarea id="observations" rows="3" cols="30">Teste de agendamento</textarea>
+            </div>
+            <br>
+            <button type="submit">Testar Agendamento</button>
+        </form>
+    </div>
+    
+    <div class="debug-section">
+        <h3>Log de Debug</h3>
+        <button onclick="clearLog()">Limpar Log</button>
+        <button onclick="testSupabaseConnection()">Testar Conexão Supabase</button>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        // Configurar data padrão para amanhã
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('date').value = tomorrow.toISOString().split('T')[0];
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        async function testSupabaseConnection() {
+            log('🔄 Testando conexão com Supabase...');
+            try {
+                // Tentar fazer uma requisição simples para o endpoint
+                const response = await fetch('http://localhost:8081/agendamento/default');
+                if (response.ok) {
+                    log('✅ Página de agendamento acessível', 'success');
+                } else {
+                    log(`❌ Erro HTTP: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Erro de conexão: ${error.message}`, 'error');
+            }
+        }
+        
+        document.getElementById('appointmentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            log('🚀 Iniciando teste de agendamento...');
+            
+            const formData = {
+                clientName: document.getElementById('clientName').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                service: document.getElementById('service').value,
+                professional: document.getElementById('professional').value,
+                date: document.getElementById('date').value,
+                time: document.getElementById('time').value,
+                observations: document.getElementById('observations').value
+            };
+            
+            log(`📋 Dados do formulário: ${JSON.stringify(formData, null, 2)}`);
+            
+            // Validar campos obrigatórios
+            if (!formData.clientName || !formData.phone || !formData.service || !formData.date || !formData.time) {
+                log('❌ Campos obrigatórios não preenchidos', 'error');
+                return;
+            }
+            
+            log('✅ Validação local passou', 'success');
+            
+            // Simular o que aconteceria no frontend
+            const appointmentData = {
+                user_id: 'default',
+                client_name: formData.clientName,
+                client_email: formData.email || '',
+                client_phone: formData.phone,
+                service: formData.service,
+                professional: formData.professional || '',
+                appointment_date: formData.date,
+                appointment_time: formData.time,
+                observations: formData.observations || '',
+                status: 'pending'
+            };
+            
+            log(`📤 Dados que seriam enviados ao Supabase: ${JSON.stringify(appointmentData, null, 2)}`);
+            log('⚠️ Para testar completamente, acesse: http://localhost:8081/agendamento/default', 'success');
+        });
+        
+        // Log inicial
+        window.onload = function() {
+            log('🔧 Sistema de debug carregado');
+            log('📋 Preencha o formulário e clique em "Testar Agendamento"');
+            testSupabaseConnection();
+        };
+    </script>
+</body>
+</html>

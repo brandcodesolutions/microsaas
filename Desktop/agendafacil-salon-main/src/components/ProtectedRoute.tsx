@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabaseApi } from '@/services/supabase-api';
+import { supabase } from '@/lib/supabase';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,16 +13,17 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const authenticated = await supabaseApi.auth.isAuthenticated();
+        const { data: { user } } = await supabase.auth.getUser();
+        const authenticated = !!user;
         setIsAuthenticated(authenticated);
         
         if (!authenticated) {
-          navigate('/login', { replace: true });
+          navigate('/login');
         }
       } catch (error) {
         console.error('Erro ao verificar autenticação:', error);
         setIsAuthenticated(false);
-        navigate('/login', { replace: true });
+        navigate('/login');
       }
     };
 

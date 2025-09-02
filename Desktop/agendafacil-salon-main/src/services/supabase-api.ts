@@ -1,4 +1,4 @@
-import { supabase, type User, type Appointment, type AuthUser } from '@/lib/supabase'
+import { supabase, type User, type Appointment, type CreateAppointmentData, type Salon, type Service, type Professional, type AuthUser } from '@/lib/supabase'
 import { AuthError, PostgrestError } from '@supabase/supabase-js'
 
 // Tipos para respostas da API
@@ -117,10 +117,158 @@ export const authService = {
   }
 }
 
-// Serviços de Agendamentos
+// =====================================================
+// SERVIÇOS PARA O NOVO ESQUEMA V2
+// =====================================================
+
+// Serviços de Salões
+export const salonService = {
+  // Buscar salão por ID (adaptado para o schema simplificado)
+  async getById(id: string): Promise<ApiResponse<Salon>> {
+    try {
+      const { data, error } = await supabase
+        .from('salons')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar salão' }
+    }
+  },
+
+  // Buscar salão por nome (para compatibilidade)
+  async getBySlug(slug: string): Promise<ApiResponse<Salon>> {
+    try {
+      // No schema simplificado, vamos buscar pelo nome
+      const { data, error } = await supabase
+        .from('salons')
+        .select('*')
+        .ilike('name', `%${slug}%`)
+        .limit(1)
+        .single()
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar salão' }
+    }
+  },
+
+  // Buscar salão do usuário logado
+  async getCurrentUserSalon(): Promise<ApiResponse<Salon>> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        return { success: false, error: 'Usuário não autenticado' }
+      }
+
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select(`
+          salon_id,
+          salons (
+            id,
+            name,
+            email,
+            phone,
+            address,
+            created_at
+          )
+        `)
+        .eq('id', user.id)
+        .single()
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      if (!data.salons) {
+        return { success: false, error: 'Salão não encontrado para este usuário' }
+      }
+
+      return { success: true, data: data.salons as Salon }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar salão do usuário' }
+    }
+  },
+
+  // Listar todos os salões
+  async getAll(): Promise<ApiResponse<Salon[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('salons')
+        .select('*')
+        .order('name')
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data: data || [] }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar salões' }
+    }
+  }
+}
+
+// Serviços de Serviços
+export const serviceService = {
+  // Buscar serviços por salão
+  async getBySalonId(salonId: string): Promise<ApiResponse<Service[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('salon_id', salonId)
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data: data || [] }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar serviços' }
+    }
+  }
+}
+
+// Serviços de Profissionais
+export const professionalService = {
+  // Buscar profissionais por salão
+  async getBySalonId(salonId: string): Promise<ApiResponse<Professional[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('professionals')
+        .select('*')
+        .eq('salon_id', salonId)
+        .order('name')
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data: data || [] }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar profissionais' }
+    }
+  }
+}
+
+// Serviços de Agendamentos (REDESENHADO)
 export const appointmentService = {
-  // Criar agendamento
-  async create(appointmentData: Omit<Appointment, 'id' | 'created_at'>): Promise<ApiResponse<Appointment>> {
+  // Criar agendamento (novo esquema)
+  async create(appointmentData: CreateAppointmentData): Promise<ApiResponse<Appointment>> {
     try {
       const { data, error } = await supabase
         .from('appointments')
@@ -138,6 +286,79 @@ export const appointmentService = {
     }
   },
 
+  // Criar agendamento simplificado (para formulário público)
+  async createSimple(data: {
+    salonSlug: string
+    clientName: string
+    clientEmail: string
+    clientPhone: string
+    serviceName: string
+    professionalName?: string
+    appointmentDate: string
+    appointmentTime: string
+    observations?: string
+  }): Promise<ApiResponse<Appointment>> {
+    try {
+      // Primeiro, buscar o salão pelo slug
+      const salonResponse = await salonService.getBySlug(data.salonSlug)
+      if (!salonResponse.success || !salonResponse.data) {
+        return { success: false, error: 'Salão não encontrado' }
+      }
+
+      const salon = salonResponse.data
+
+      // Buscar serviço e profissional (se especificados)
+      let serviceId: string | undefined
+      let professionalId: string | undefined
+      let durationMinutes = 60
+      let priceCents = 0
+
+      // Buscar serviço pelo nome
+      const servicesResponse = await serviceService.getBySalonId(salon.id)
+      if (servicesResponse.success && servicesResponse.data) {
+        const service = servicesResponse.data.find(s => s.name === data.serviceName)
+        if (service) {
+          serviceId = service.id
+          durationMinutes = service.duration_minutes
+          priceCents = service.price_cents
+        }
+      }
+
+      // Buscar profissional pelo nome (se especificado)
+      if (data.professionalName) {
+        const professionalsResponse = await professionalService.getBySalonId(salon.id)
+        if (professionalsResponse.success && professionalsResponse.data) {
+          const professional = professionalsResponse.data.find(p => p.name === data.professionalName)
+          if (professional) {
+            professionalId = professional.id
+          }
+        }
+      }
+
+      // Criar agendamento
+      const appointmentData: CreateAppointmentData = {
+        salon_id: salon.id,
+        service_id: serviceId,
+        professional_id: professionalId,
+        client_name: data.clientName,
+        client_email: data.clientEmail,
+        client_phone: data.clientPhone,
+        service_name: data.serviceName,
+        professional_name: data.professionalName,
+        appointment_date: data.appointmentDate,
+        appointment_time: data.appointmentTime,
+        duration_minutes: durationMinutes,
+        price_cents: priceCents,
+        observations: data.observations,
+        status: 'pending'
+      }
+
+      return await this.create(appointmentData)
+    } catch (error) {
+      return { success: false, error: 'Erro ao criar agendamento' }
+    }
+  },
+
   // Listar agendamentos do usuário
   async getByUserId(userId: string): Promise<ApiResponse<Appointment[]>> {
     try {
@@ -145,7 +366,7 @@ export const appointmentService = {
         .from('appointments')
         .select('*')
         .eq('user_id', userId)
-        .order('date', { ascending: true })
+        .order('appointment_date', { ascending: true })
 
       if (error) {
         return { success: false, error: error.message }
@@ -192,6 +413,26 @@ export const appointmentService = {
       return { success: true }
     } catch (error) {
       return { success: false, error: 'Erro ao deletar agendamento' }
+    }
+  },
+
+  // Listar agendamentos por salão
+  async getBySalonId(salonId: string): Promise<ApiResponse<AppointmentDetailed[]>> {
+    try {
+      const { data, error } = await supabase
+        .from('appointments_detailed')
+        .select('*')
+        .eq('salon_id', salonId)
+        .order('appointment_date', { ascending: true })
+        .order('appointment_time', { ascending: true })
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true, data: data || [] }
+    } catch (error) {
+      return { success: false, error: 'Erro ao buscar agendamentos do salão' }
     }
   }
 }

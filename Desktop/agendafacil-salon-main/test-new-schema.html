@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Novo Esquema Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste do Novo Esquema Supabase</h1>
+        
+        <div class="test-section info">
+            <h3>📋 Configuração</h3>
+            <p>Este teste verifica se o novo esquema está funcionando corretamente.</p>
+            <button onclick="testConnection()">🔗 Testar Conexão</button>
+            <div id="connection-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🏢 Teste de Salões</h3>
+            <button onclick="testSalons()">📋 Listar Salões</button>
+            <button onclick="testSalonBySlug()">🔍 Buscar por Slug</button>
+            <div id="salons-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>✂️ Teste de Serviços</h3>
+            <button onclick="testServices()">📋 Listar Serviços</button>
+            <div id="services-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>👥 Teste de Profissionais</h3>
+            <button onclick="testProfessionals()">📋 Listar Profissionais</button>
+            <div id="professionals-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📅 Teste de Agendamento</h3>
+            <button onclick="testCreateAppointment()">➕ Criar Agendamento</button>
+            <button onclick="testListAppointments()">📋 Listar Agendamentos</button>
+            <div id="appointments-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        // Substitua pelas suas credenciais reais
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML = `<div class="${className}"><pre>${message}</pre></div>`;
+        }
+
+        async function testConnection() {
+            try {
+                const { data, error } = await supabase.from('salons').select('count', { count: 'exact', head: true });
+                if (error) throw error;
+                log('connection-result', '✅ Conexão com Supabase estabelecida com sucesso!', 'success');
+            } catch (error) {
+                log('connection-result', `❌ Erro na conexão: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSalons() {
+            try {
+                const { data, error } = await supabase
+                    .from('salons')
+                    .select('*');
+                
+                if (error) throw error;
+                log('salons-result', `✅ Salões encontrados:\n${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log('salons-result', `❌ Erro ao buscar salões: ${error.message}`, 'error');
+            }
+        }
+
+        async function testSalonBySlug() {
+            try {
+                const { data, error } = await supabase
+                    .from('salons')
+                    .select('*')
+                    .eq('slug', 'beleza-total')
+                    .single();
+                
+                if (error) throw error;
+                log('salons-result', `✅ Salão encontrado por slug:\n${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log('salons-result', `❌ Erro ao buscar salão por slug: ${error.message}`, 'error');
+            }
+        }
+
+        async function testServices() {
+            try {
+                // Primeiro, pegar o ID do salão
+                const { data: salon, error: salonError } = await supabase
+                    .from('salons')
+                    .select('id')
+                    .eq('slug', 'beleza-total')
+                    .single();
+                
+                if (salonError) throw salonError;
+
+                const { data, error } = await supabase
+                    .from('services')
+                    .select('*')
+                    .eq('salon_id', salon.id);
+                
+                if (error) throw error;
+                log('services-result', `✅ Serviços encontrados:\n${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log('services-result', `❌ Erro ao buscar serviços: ${error.message}`, 'error');
+            }
+        }
+
+        async function testProfessionals() {
+            try {
+                // Primeiro, pegar o ID do salão
+                const { data: salon, error: salonError } = await supabase
+                    .from('salons')
+                    .select('id')
+                    .eq('slug', 'beleza-total')
+                    .single();
+                
+                if (salonError) throw salonError;
+
+                const { data, error } = await supabase
+                    .from('professionals')
+                    .select('*')
+                    .eq('salon_id', salon.id);
+                
+                if (error) throw error;
+                log('professionals-result', `✅ Profissionais encontrados:\n${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log('professionals-result', `❌ Erro ao buscar profissionais: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCreateAppointment() {
+            try {
+                // Buscar dados necessários
+                const { data: salon, error: salonError } = await supabase
+                    .from('salons')
+                    .select('id')
+                    .eq('slug', 'beleza-total')
+                    .single();
+                
+                if (salonError) throw salonError;
+
+                const { data: service, error: serviceError } = await supabase
+                    .from('services')
+                    .select('id, name')
+                    .eq('salon_id', salon.id)
+                    .limit(1)
+                    .single();
+                
+                if (serviceError) throw serviceError;
+
+                const { data: professional, error: professionalError } = await supabase
+                    .from('professionals')
+                    .select('id, name')
+                    .eq('salon_id', salon.id)
+                    .limit(1)
+                    .single();
+                
+                if (professionalError) throw professionalError;
+
+                // Criar agendamento
+                const appointmentData = {
+                    salon_id: salon.id,
+                    service_id: service.id,
+                    professional_id: professional.id,
+                    client_name: 'João Teste',
+                    client_email: 'joao.teste@email.com',
+                    client_phone: '(11) 99999-9999',
+                    appointment_date: '2024-02-15',
+                    appointment_time: '14:00',
+                    service_name: service.name,
+                    professional_name: professional.name,
+                    status: 'pending'
+                };
+
+                const { data, error } = await supabase
+                    .from('appointments')
+                    .insert(appointmentData)
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                log('appointments-result', `✅ Agendamento criado:\n${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log('appointments-result', `❌ Erro ao criar agendamento: ${error.message}`, 'error');
+            }
+        }
+
+        async function testListAppointments() {
+            try {
+                const { data, error } = await supabase
+                    .from('appointments_detailed')
+                    .select('*')
+                    .limit(5);
+                
+                if (error) throw error;
+                log('appointments-result', `✅ Agendamentos encontrados:\n${JSON.stringify(data, null, 2)}`, 'success');
+            } catch (error) {
+                log('appointments-result', `❌ Erro ao listar agendamentos: ${error.message}`, 'error');
+            }
+        }
+
+        // Teste inicial de conexão
+        window.onload = () => {
+            log('connection-result', '⏳ Clique em "Testar Conexão" para verificar se o Supabase está configurado corretamente.');
+        };
+    </script>
+</body>
+</html>

@@ -10,30 +10,118 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Tipos para as tabelas do banco
-export interface User {
+// =====================================================
+// TIPOS PARA O NOVO ESQUEMA V2
+// =====================================================
+
+// Salão
+export interface Salon {
   id: string
-  email: string
+  slug: string
   name: string
+  email?: string
   phone?: string
   address?: string
   description?: string
+  business_hours?: Record<string, string>
+  is_active: boolean
   created_at: string
   updated_at: string
 }
 
+// Serviço
+export interface Service {
+  id: string
+  salon_id: string
+  name: string
+  description?: string
+  duration_minutes: number
+  price_cents: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Profissional
+export interface Professional {
+  id: string
+  salon_id: string
+  name: string
+  specialty?: string
+  email?: string
+  phone?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+// Perfil de usuário
+export interface User {
+  id: string
+  salon_id?: string
+  email: string
+  name: string
+  phone?: string
+  role: 'client' | 'admin' | 'professional'
+  created_at: string
+  updated_at: string
+}
+
+// Agendamento (novo esquema)
 export interface Appointment {
   id: string
+  salon_id: string
+  service_id?: string
+  professional_id?: string
+  user_id?: string
   client_name: string
   client_email: string
   client_phone: string
-  service: string
-  date: string
-  time: string
+  service_name: string
+  professional_name?: string
+  appointment_date: string
+  appointment_time: string
+  duration_minutes?: number
+  price_cents?: number
   observations?: string
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
   created_at: string
-  user_id: string
+  updated_at: string
+  cancelled_at?: string
+  cancellation_reason?: string
+}
+
+// Dados para criar agendamento
+export interface CreateAppointmentData {
+  salon_id: string
+  service_id?: string
+  professional_id?: string
+  user_id?: string
+  client_name: string
+  client_email: string
+  client_phone: string
+  service_name: string
+  professional_name?: string
+  appointment_date: string
+  appointment_time: string
+  duration_minutes?: number
+  price_cents?: number
+  observations?: string
+  status?: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show'
+}
+
+// View detalhada de agendamentos
+export interface AppointmentDetailed extends Appointment {
+  salon_name?: string
+  salon_phone?: string
+  salon_address?: string
+  service_full_name?: string
+  service_duration?: number
+  service_price?: number
+  professional_full_name?: string
+  professional_specialty?: string
+  user_name?: string
+  user_email?: string
 }
 
 // Tipos para autenticação

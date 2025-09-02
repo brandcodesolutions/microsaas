@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Autenticação Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Teste de Autenticação Supabase</h1>
+        <p>Diagnóstico específico para problemas de login</p>
+        
+        <div>
+            <button onclick="checkAuthConfig()">1. Verificar Configuração</button>
+            <button onclick="testRegisterNew()">2. Testar Registro</button>
+            <button onclick="listAuthUsers()">3. Listar Usuários Auth</button>
+            <button onclick="clearResults()">Limpar</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <div class="container">
+        <h2>📝 Registro de Teste</h2>
+        <input type="email" id="regEmail" placeholder="email-teste@exemplo.com">
+        <input type="password" id="regPassword" placeholder="senha123">
+        <button onclick="doRegister()">Registrar</button>
+        
+        <h2>🔑 Login de Teste</h2>
+        <input type="email" id="loginEmail" placeholder="seu@email.com">
+        <input type="password" id="loginPassword" placeholder="sua senha">
+        <button onclick="doLogin()">Login</button>
+        
+        <div id="authResults"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://ofpuhlkkvzrxidqkwvyp.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcHVobGtrdnpyeGlkcWt3dnlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY3Mzk0NjYsImV4cCI6MjA3MjMxNTQ2Nn0.1TrRrNSAIzoE1NGF9GUFbPA7hUUHr4x6v1KgjDGbWG0';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        function addResult(message, type = 'info', containerId = 'results') {
+            const results = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('authResults').innerHTML = '';
+        }
+        
+        async function checkAuthConfig() {
+            addResult('🔄 Verificando configuração de autenticação...', 'info');
+            
+            try {
+                // Verificar se consegue acessar as configurações
+                const { data: { session } } = await supabase.auth.getSession();
+                addResult(`📋 Sessão atual: ${session ? 'Ativa' : 'Nenhuma'}`, 'info');
+                
+                // Verificar configurações do projeto
+                addResult(`🔗 URL do projeto: ${supabaseUrl}`, 'info');
+                addResult(`🔑 Chave anônima: ${supabaseKey.substring(0, 50)}...`, 'info');
+                
+                // Testar uma operação básica de auth
+                const { data: user } = await supabase.auth.getUser();
+                addResult(`👤 Usuário atual: ${user.user ? user.user.email : 'Nenhum'}`, 'info');
+                
+            } catch (err) {
+                addResult(`❌ Erro na configuração: ${err.message}`, 'error');
+            }
+        }
+        
+        async function testRegisterNew() {
+            const testEmail = `teste${Date.now()}@exemplo.com`;
+            const testPassword = 'senha123456';
+            
+            addResult(`🔄 Testando registro com: ${testEmail}`, 'info');
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: testEmail,
+                    password: testPassword,
+                    options: {
+                        data: {
+                            name: 'Usuário Teste'
+                        }
+                    }
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro no registro: ${error.message}`, 'error');
+                    addResult(`<pre>Detalhes: ${JSON.stringify(error, null, 2)}</pre>`, 'error');
+                } else {
+                    addResult('✅ Registro realizado com sucesso!', 'success');
+                    addResult(`📧 Email: ${testEmail}`, 'success');
+                    addResult(`🔐 Senha: ${testPassword}`, 'success');
+                    
+                    if (data.user && !data.user.email_confirmed_at) {
+                        addResult('⚠️ Email não confirmado - isso pode ser o problema!', 'warning');
+                        addResult('💡 Verifique se a confirmação de email está desabilitada no Supabase', 'info');
+                    }
+                    
+                    addResult(`<pre>Dados: ${JSON.stringify(data, null, 2)}</pre>`, 'info');
+                }
+            } catch (err) {
+                addResult(`❌ Erro inesperado: ${err.message}`, 'error');
+            }
+        }
+        
+        async function listAuthUsers() {
+            addResult('🔄 Tentando listar usuários...', 'info');
+            
+            try {
+                // Tentar acessar user_profiles (nossa tabela)
+                const { data: profiles, error } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .limit(10);
+                
+                if (error) {
+                    addResult(`❌ Erro ao acessar user_profiles: ${error.message}`, 'error');
+                    
+                    // Se não conseguir acessar user_profiles, pode ser que a tabela não existe
+                    if (error.message.includes('relation "public.user_profiles" does not exist')) {
+                        addResult('🚨 PROBLEMA ENCONTRADO: Tabela user_profiles não existe!', 'error');
+                        addResult('💡 Você precisa executar o script SQL no Supabase primeiro', 'warning');
+                    }
+                } else {
+                    addResult(`✅ Encontrados ${profiles.length} perfis de usuário`, 'success');
+                    if (profiles.length > 0) {
+                        addResult(`<pre>${JSON.stringify(profiles, null, 2)}</pre>`, 'info');
+                    }
+                }
+            } catch (err) {
+                addResult(`❌ Erro: ${err.message}`, 'error');
+            }
+        }
+        
+        async function doRegister() {
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            
+            if (!email || !password) {
+                addResult('⚠️ Preencha email e senha', 'warning', 'authResults');
+                return;
+            }
+            
+            addResult(`🔄 Registrando: ${email}`, 'info', 'authResults');
+            
+            try {
+                const { data, error } = await supabase.auth.signUp({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro: ${error.message}`, 'error', 'authResults');
+                } else {
+                    addResult('✅ Registro OK!', 'success', 'authResults');
+                    addResult(`📧 Use: ${email} / ${password}`, 'success', 'authResults');
+                }
+            } catch (err) {
+                addResult(`❌ Erro: ${err.message}`, 'error', 'authResults');
+            }
+        }
+        
+        async function doLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!email || !password) {
+                addResult('⚠️ Preencha email e senha', 'warning', 'authResults');
+                return;
+            }
+            
+            addResult(`🔄 Fazendo login: ${email}`, 'info', 'authResults');
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (error) {
+                    addResult(`❌ Erro no login: ${error.message}`, 'error', 'authResults');
+                    
+                    // Diagnósticos específicos
+                    if (error.message.includes('Invalid login credentials')) {
+                        addResult('🔍 Possíveis causas:', 'info', 'authResults');
+                        addResult('• Email não cadastrado', 'info', 'authResults');
+                        addResult('• Senha incorreta', 'info', 'authResults');
+                        addResult('• Email não confirmado (se confirmação estiver ativa)', 'info', 'authResults');
+                        addResult('• Usuário desabilitado', 'info', 'authResults');
+                    }
+                    
+                    if (error.message.includes('Email not confirmed')) {
+                        addResult('🚨 PROBLEMA: Email não confirmado!', 'error', 'authResults');
+                        addResult('💡 Solução: Desabilite confirmação de email no Supabase', 'warning', 'authResults');
+                    }
+                } else {
+                    addResult('✅ Login realizado com sucesso!', 'success', 'authResults');
+                    addResult(`👤 Usuário: ${data.user.email}`, 'success', 'authResults');
+                }
+            } catch (err) {
+                addResult(`❌ Erro inesperado: ${err.message}`, 'error', 'authResults');
+            }
+        }
+        
+        // Teste automático ao carregar
+        window.onload = function() {
+            addResult('🔧 Teste de autenticação carregado!', 'info');
+            addResult('👆 Clique em "1. Verificar Configuração" para começar', 'info');
+        };
+    </script>
+</body>
+</html>
