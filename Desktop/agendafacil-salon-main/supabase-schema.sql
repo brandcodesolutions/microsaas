@@ -13,25 +13,69 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Criar tabela de agendamentos
+-- 2. Criar tabela de salões
+CREATE TABLE IF NOT EXISTS public.salons (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  address TEXT,
+  phone TEXT,
+  email TEXT,
+  description TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Adicionar salon_id ao user_profiles
+ALTER TABLE public.user_profiles ADD COLUMN IF NOT EXISTS salon_id UUID REFERENCES public.salons(id);
+
+-- 3. Criar tabela de serviços
+CREATE TABLE IF NOT EXISTS public.services (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  salon_id UUID REFERENCES public.salons(id) NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2),
+  duration INTEGER, -- em minutos
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Criar tabela de profissionais
+CREATE TABLE IF NOT EXISTS public.professionals (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  salon_id UUID REFERENCES public.salons(id) NOT NULL,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  specialties TEXT[],
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 5. Criar tabela de agendamentos
 CREATE TABLE IF NOT EXISTS public.appointments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) NOT NULL,
+  salon_id UUID REFERENCES public.salons(id) NOT NULL,
+  service_id UUID REFERENCES public.services(id),
+  professional_id UUID REFERENCES public.professionals(id),
+  client_id UUID REFERENCES auth.users(id),
   client_name TEXT NOT NULL,
   client_email TEXT NOT NULL,
   client_phone TEXT NOT NULL,
-  service TEXT NOT NULL,
-  professional TEXT,
   appointment_date DATE NOT NULL,
   appointment_time TIME NOT NULL,
-  observations TEXT,
+  notes TEXT,
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'cancelled', 'completed')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Habilitar Row Level Security (RLS)
+-- 6. Habilitar Row Level Security (RLS)
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.salons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.professionals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
 
 -- 4. Políticas de segurança para user_profiles
@@ -56,11 +100,35 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 5. Políticas de segurança para appointments
+-- 7. Políticas de segurança para salons
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'appointments' AND policyname = 'Users can view own appointments') THEN
-    CREATE POLICY "Users can view own appointments" ON public.appointments
-      FOR SELECT USING (auth.uid() = user_id);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'salons' AND policyname = 'Anyone can view salons') THEN
+    CREATE POLICY "Anyone can view salons" ON public.salons
+      FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- 8. Políticas de segurança para services
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'services' AND policyname = 'Anyone can view services') THEN
+    CREATE POLICY "Anyone can view services" ON public.services
+      FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- 9. Políticas de segurança para professionals
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'professionals' AND policyname = 'Anyone can view professionals') THEN
+    CREATE POLICY "Anyone can view professionals" ON public.professionals
+      FOR SELECT USING (true);
+  END IF;
+END $$;
+
+-- 10. Políticas de segurança para appointments
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'appointments' AND policyname = 'Anyone can view appointments') THEN
+    CREATE POLICY "Anyone can view appointments" ON public.appointments
+      FOR SELECT USING (true);
   END IF;
 END $$;
 
@@ -72,16 +140,16 @@ DO $$ BEGIN
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'appointments' AND policyname = 'Users can update own appointments') THEN
-    CREATE POLICY "Users can update own appointments" ON public.appointments
-      FOR UPDATE USING (auth.uid() = user_id);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'appointments' AND policyname = 'Anyone can update appointments') THEN
+    CREATE POLICY "Anyone can update appointments" ON public.appointments
+      FOR UPDATE USING (true);
   END IF;
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'appointments' AND policyname = 'Users can delete own appointments') THEN
-    CREATE POLICY "Users can delete own appointments" ON public.appointments
-      FOR DELETE USING (auth.uid() = user_id);
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'appointments' AND policyname = 'Anyone can delete appointments') THEN
+    CREATE POLICY "Anyone can delete appointments" ON public.appointments
+      FOR DELETE USING (true);
   END IF;
 END $$;
 
