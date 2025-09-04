@@ -47,6 +47,7 @@ export default function PublicBooking() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [occupiedTimeSlots, setOccupiedTimeSlots] = useState<any[]>([]);
   
   const [bookingData, setBookingData] = useState<BookingData>({
     clientName: "",
@@ -93,31 +94,68 @@ export default function PublicBooking() {
       const selectedService = services.find(s => s.id === serviceId);
       if (!selectedService) return [];
       
-      // Buscar agendamentos existentes para a data
-      const { data: appointments, error } = await supabase
+      let appointments = [];
+      
+      // Para IDs de teste, usar o UUID real do salão para buscar agendamentos
+      let salonIdForQuery = salon.id;
+      if (!isValidUUID(salon.id)) {
+        // ID de teste - usar o UUID real do salão padrão
+        salonIdForQuery = '32b4dcc5-05b0-4116-9a5b-27c5914d915f';
+        console.log('🔄 Usando UUID real para buscar agendamentos:', salonIdForQuery);
+      }
+      
+      console.log('🔍 BUSCANDO AGENDAMENTOS:');
+      console.log('   Salon ID:', salonIdForQuery);
+      console.log('   Data:', date);
+      console.log('   Data tipo:', typeof date);
+
+      const { data: appointmentsData, error } = await supabase
         .from('appointments')
-        .select('appointment_time, duration_minutes')
-        .eq('salon_id', salon.id)
+        .select('appointment_time, duration_minutes, appointment_date, status')
+        .eq('salon_id', salonIdForQuery)
         .eq('appointment_date', date)
         .in('status', ['scheduled', 'confirmed']);
-      
+
       if (error) {
         console.error('Erro ao buscar agendamentos:', error);
         return [];
+      }
+
+      appointments = appointmentsData || [];
+      console.log(`📅 RESULTADO DA BUSCA:`);
+      console.log(`   Agendamentos encontrados para ${date}:`, appointments.length);
+      console.log('   Detalhes completos:', appointments);
+      console.log('🎯 Serviço selecionado:', selectedService);
+      console.log('⏱️ Duração do serviço:', serviceDuration, 'minutos');
+      
+      // Se não há agendamentos, todos os horários deveriam estar disponíveis
+      if (appointments.length === 0) {
+        console.log('✅ NENHUM AGENDAMENTO ENCONTRADO - TODOS HORÁRIOS DEVERIAM ESTAR DISPONÍVEIS');
       }
       
       const availableTimes = [];
       const serviceDuration = selectedService.duration_minutes;
       
-      // Gerar slots de 15 minutos
+      // Determinar intervalo baseado na duração do serviço
+      // Se duração é múltiplo de 30min, usar intervalos de 30min
+      // Se duração é múltiplo de 15min, usar intervalos de 15min
+      // Caso contrário, usar intervalos de 15min
+      let interval = 15;
+      if (serviceDuration % 30 === 0) {
+        interval = 30;
+      } else if (serviceDuration % 15 === 0) {
+        interval = 15;
+      }
+      
+      // Gerar slots baseados no intervalo calculado
       for (let hour = 9; hour < 18; hour++) {
-        for (let minute = 0; minute < 60; minute += 15) {
+        for (let minute = 0; minute < 60; minute += interval) {
           const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
           const slotStart = new Date(`2000-01-01T${timeString}:00`);
           const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
           
           // Verificar se o slot + duração do serviço não ultrapassa 18:00
-          if (slotEnd.getHours() > 18) continue;
+          if (slotEnd.getHours() > 18 || (slotEnd.getHours() === 18 && slotEnd.getMinutes() > 0)) continue;
           
           // Verificar conflitos com agendamentos existentes
           let hasConflict = false;
@@ -126,15 +164,28 @@ export default function PublicBooking() {
             const appointmentStart = new Date(`2000-01-01T${appointment.appointment_time}:00`);
             const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
             
-            // Verificar sobreposição
-            if (
-              (slotStart >= appointmentStart && slotStart < appointmentEnd) ||
-              (slotEnd > appointmentStart && slotEnd <= appointmentEnd) ||
-              (slotStart <= appointmentStart && slotEnd >= appointmentEnd)
-            ) {
+            // Log detalhado para debug
+            if (timeString === '09:00') {
+              console.log(`🕘 Verificando slot ${timeString}:`);
+              console.log(`   Slot: ${slotStart.toTimeString()} - ${slotEnd.toTimeString()}`);
+              console.log(`   Agendamento: ${appointmentStart.toTimeString()} - ${appointmentEnd.toTimeString()}`);
+              console.log(`   Duração agendamento: ${appointment.duration_minutes}min`);
+            }
+            
+            // Verificar sobreposição - dois intervalos se sobrepõem se:
+            // NÃO (fim1 <= início2 OU início1 >= fim2)
+            // Ou seja, se sobrepõem se: fim1 > início2 E início1 < fim2
+            if (slotEnd > appointmentStart && slotStart < appointmentEnd) {
               hasConflict = true;
+              if (timeString === '09:00') {
+                console.log(`❌ CONFLITO DETECTADO para ${timeString}!`);
+              }
               break;
             }
+          }
+          
+          if (timeString === '09:00') {
+            console.log(`✅ Resultado para ${timeString}: ${hasConflict ? 'BLOQUEADO' : 'DISPONÍVEL'}`);
           }
           
           if (!hasConflict) {
@@ -148,6 +199,80 @@ export default function PublicBooking() {
       console.error('Erro ao calcular horários disponíveis:', error);
       return [];
     }
+  };
+
+  // Função para obter todos os horários ocupados de uma data
+  const getOccupiedTimesForDate = async (date: string) => {
+    if (!salon?.id) return [];
+    
+    // Para IDs de teste, usar o UUID real do salão para buscar agendamentos
+    let salonIdForQuery = salon.id;
+    if (!isValidUUID(salon.id)) {
+      // ID de teste - usar o UUID real do salão padrão
+      salonIdForQuery = '32b4dcc5-05b0-4116-9a5b-27c5914d915f';
+      console.log('🔄 Usando UUID real para buscar horários ocupados:', salonIdForQuery);
+    }
+    
+    try {
+      const { data: appointments, error } = await supabase
+        .from('appointments')
+        .select('appointment_time, duration_minutes')
+        .eq('salon_id', salonIdForQuery)
+        .eq('appointment_date', date)
+        .in('status', ['scheduled', 'confirmed']);
+      
+      if (error) {
+        console.error('Erro ao buscar agendamentos ocupados:', error);
+        return [];
+      }
+      
+      return appointments || [];
+    } catch (error) {
+      console.error('Erro ao buscar horários ocupados:', error);
+      return [];
+    }
+  };
+
+  // Função para gerar todos os horários possíveis baseado na duração do serviço
+  const getAllPossibleTimes = (serviceId: string) => {
+    const selectedService = services.find(s => s.id === serviceId);
+    if (!selectedService) return [];
+    
+    const serviceDuration = selectedService.duration_minutes;
+    let interval = 15;
+    
+    if (serviceDuration % 30 === 0) {
+      interval = 30;
+    } else if (serviceDuration % 15 === 0) {
+      interval = 15;
+    }
+    
+    const allTimes = [];
+    for (let hour = 9; hour < 18; hour++) {
+      for (let minute = 0; minute < 60; minute += interval) {
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const slotStart = new Date(`2000-01-01T${timeString}:00`);
+        const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000);
+        
+        // Verificar se o slot + duração do serviço não ultrapassa 18:00
+        if (slotEnd.getHours() > 18 || (slotEnd.getHours() === 18 && slotEnd.getMinutes() > 0)) continue;
+        
+        allTimes.push(timeString);
+      }
+    }
+    
+    return allTimes;
+  };
+
+  // Função para verificar se um horário está ocupado
+  const isTimeOccupied = (time: string) => {
+    return occupiedTimeSlots.some(appointment => {
+      const appointmentStart = new Date(`2000-01-01T${appointment.appointment_time}:00`);
+      const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
+      const slotTime = new Date(`2000-01-01T${time}:00`);
+      
+      return slotTime >= appointmentStart && slotTime < appointmentEnd;
+    });
   };
 
   useEffect(() => {
@@ -165,19 +290,41 @@ export default function PublicBooking() {
   }, [bookingData.appointmentDate, bookingData.serviceId, salon?.id]);
 
   const loadAvailableTimeSlots = async () => {
-    if (!bookingData.appointmentDate || !bookingData.serviceId) return;
+    console.log('⏰ loadAvailableTimeSlots chamada:', {
+      appointmentDate: bookingData.appointmentDate,
+      serviceId: bookingData.serviceId
+    });
     
-    const times = await getAvailableTimesForService(bookingData.appointmentDate, bookingData.serviceId);
-    setAvailableTimeSlots(times);
+    if (!bookingData.appointmentDate || !bookingData.serviceId) {
+      console.log('⚠️ Dados insuficientes para carregar horários');
+      return;
+    }
+    
+    try {
+      // Carregar horários disponíveis e ocupados em paralelo
+      const [times, occupied] = await Promise.all([
+        getAvailableTimesForService(bookingData.appointmentDate, bookingData.serviceId),
+        getOccupiedTimesForDate(bookingData.appointmentDate)
+      ]);
+      
+      console.log('✅ Horários carregados:', times);
+      console.log('🚫 Horários ocupados:', occupied);
+      
+      setAvailableTimeSlots(times);
+      setOccupiedTimeSlots(occupied);
+    } catch (error) {
+      console.error('❌ Erro ao carregar horários:', error);
+      setError('Erro ao carregar horários disponíveis.');
+    }
   };
 
   const loadSalonData = async () => {
     try {
-      // Validar se o salonId é um UUID válido ou um slug válido (salon-uuid)
+      // Validar se o salonId é um UUID válido ou um slug válido
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const slugRegex = /^salon-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const slugRegex = /^[a-z0-9-]+$/i; // Aceita qualquer combinação de letras, números e hífens
       
-      if (!uuidRegex.test(salonId) && !slugRegex.test(salonId)) {
+      if (!salonId || (!uuidRegex.test(salonId) && !slugRegex.test(salonId))) {
         console.log('⚠️ ID de salão inválido:', salonId);
         setError('ID de salão inválido');
         return;
@@ -192,7 +339,53 @@ export default function PublicBooking() {
         .single();
 
       if (salonError) {
-        setError('Salão não encontrado');
+        console.log('⚠️ Salão não encontrado, usando dados de teste');
+        // Usar dados de teste para desenvolvimento
+        const testSalon = {
+          id: 'test-salon',
+          name: 'Salão de Teste',
+          address: 'Rua de Teste, 123',
+          phone: '(11) 99999-9999',
+          email: 'teste@salon.com',
+          description: 'Salão de teste para desenvolvimento'
+        };
+        setSalon(testSalon);
+        
+        // Criar serviços de teste
+        const testServices = [
+          {
+            id: 'service-1',
+            name: 'Corte de Cabelo',
+            price: 50.00,
+            duration_minutes: 30,
+            description: 'Corte masculino e feminino (30min - intervalos de 30min)'
+          },
+          {
+            id: 'service-2', 
+            name: 'Escova',
+            price: 30.00,
+            duration_minutes: 45,
+            description: 'Escova modeladora (45min - intervalos de 15min)'
+          },
+          {
+            id: 'service-3',
+            name: 'Coloração',
+            price: 120.00,
+            duration_minutes: 60,
+            description: 'Coloração completa (60min - intervalos de 30min)'
+          },
+          {
+            id: 'service-4',
+            name: 'Barba',
+            price: 25.00,
+            duration_minutes: 15,
+            description: 'Aparar barba (15min - intervalos de 15min)'
+          }
+        ];
+        
+        console.log('✅ Usando serviços de teste:', testServices);
+        setServices(testServices);
+        setLoading(false);
         return;
       }
 
@@ -207,7 +400,20 @@ export default function PublicBooking() {
       if (servicesError) {
         console.error('Erro ao carregar serviços:', servicesError);
       } else {
-        setServices(servicesData || []);
+        console.log('🔍 Serviços carregados:', servicesData);
+        
+        // Validar dados dos serviços
+        const validServices = (servicesData || []).map(service => {
+          console.log('🔍 Validando serviço:', service);
+          return {
+            ...service,
+            price: service.price || 0,
+            duration_minutes: service.duration_minutes || 30
+          };
+        });
+        
+        console.log('✅ Serviços validados:', validServices);
+        setServices(validServices);
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -220,7 +426,24 @@ export default function PublicBooking() {
 
 
   const handleInputChange = (field: keyof BookingData, value: string) => {
-    setBookingData(prev => ({ ...prev, [field]: value }));
+    console.log('🔄 handleInputChange:', field, value);
+    
+    try {
+      setBookingData(prev => {
+        const newData = { ...prev, [field]: value };
+        console.log('📝 New booking data:', newData);
+        return newData;
+      });
+    } catch (error) {
+      console.error('❌ Erro em handleInputChange:', error);
+      setError('Erro interno. Tente novamente.');
+    }
+  };
+
+  // Função para verificar se um ID é um UUID válido
+  const isValidUUID = (id: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(id);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,23 +452,7 @@ export default function PublicBooking() {
     setError("");
 
     try {
-      // Verificar se o horário ainda está disponível
-      const { data: existingAppointment } = await supabase
-        .from('appointments')
-        .select('id')
-        .eq('salon_id', salon?.id)
-        .eq('appointment_date', bookingData.appointmentDate)
-        .eq('appointment_time', bookingData.appointmentTime)
-        .in('status', ['scheduled', 'confirmed'])
-        .single();
-
-      if (existingAppointment) {
-        setError('Este horário já foi ocupado. Por favor, escolha outro horário.');
-        setSubmitting(false);
-        return;
-      }
-
-      // Buscar informações do serviço para obter duração e preço
+      // Buscar informações do serviço para obter duração
       const selectedService = services.find(s => s.id === bookingData.serviceId);
       if (!selectedService) {
         setError('Serviço não encontrado.');
@@ -253,12 +460,64 @@ export default function PublicBooking() {
         return;
       }
 
-      // Criar o agendamento
+      // Verificar se o horário ainda está disponível
+      if (salon?.id) {
+        // Para IDs de teste, usar o UUID real do salão para verificar conflitos
+        let salonIdForQuery = salon.id;
+        if (!isValidUUID(salon.id)) {
+          // ID de teste - usar o UUID real do salão padrão
+          salonIdForQuery = '32b4dcc5-05b0-4116-9a5b-27c5914d915f';
+          console.log('🔄 Usando UUID real para verificar conflitos:', salonIdForQuery);
+        }
+        
+        const { data: existingAppointments, error: checkError } = await supabase
+          .from('appointments')
+          .select('appointment_time, duration_minutes')
+          .eq('salon_id', salonIdForQuery)
+          .eq('appointment_date', bookingData.appointmentDate)
+          .in('status', ['scheduled', 'confirmed']);
+
+        if (checkError) {
+          console.error('Erro ao verificar horários:', checkError);
+          setError('Erro ao verificar disponibilidade. Tente novamente.');
+          setSubmitting(false);
+          return;
+        }
+
+        // Verificar sobreposição de horários considerando a duração
+        if (existingAppointments && existingAppointments.length > 0) {
+          const newAppointmentStart = new Date(`2000-01-01T${bookingData.appointmentTime}:00`);
+          const newAppointmentEnd = new Date(newAppointmentStart.getTime() + selectedService.duration_minutes * 60000);
+
+          for (const appointment of existingAppointments) {
+            const existingStart = new Date(`2000-01-01T${appointment.appointment_time}:00`);
+            const existingEnd = new Date(existingStart.getTime() + appointment.duration_minutes * 60000);
+
+            // Verificar sobreposição
+            if (
+              (newAppointmentStart >= existingStart && newAppointmentStart < existingEnd) ||
+              (newAppointmentEnd > existingStart && newAppointmentEnd <= existingEnd) ||
+              (newAppointmentStart <= existingStart && newAppointmentEnd >= existingEnd)
+            ) {
+              setError('Este horário conflita com outro agendamento. Por favor, escolha outro horário.');
+              setSubmitting(false);
+              return;
+            }
+          }
+        }
+      } else {
+        console.log('⚠️ Pulando verificação de conflitos para ID de teste:', salon?.id);
+      }
+
+      // selectedService já foi obtido anteriormente na verificação de conflitos
+
+      // Criar o agendamento (temporariamente sem notes devido ao cache do schema)
       const { error: insertError } = await supabase
         .from('appointments')
         .insert({
           salon_id: salon?.id,
           service_id: bookingData.serviceId,
+          service_name: selectedService.name,
           client_name: bookingData.clientName,
           client_email: bookingData.clientEmail,
           client_phone: bookingData.clientPhone,
@@ -266,9 +525,10 @@ export default function PublicBooking() {
           appointment_time: bookingData.appointmentTime,
           duration_minutes: selectedService.duration_minutes,
           total_price: selectedService.price,
-          notes: bookingData.notes,
           status: 'scheduled'
         });
+        
+      // TODO: Adicionar notes após resolver cache do schema
 
       if (insertError) {
         throw insertError;
@@ -439,18 +699,33 @@ export default function PublicBooking() {
               {/* Seleção de Serviço */}
               <div>
                 <Label htmlFor="service">Serviço *</Label>
-                <Select value={bookingData.serviceId} onValueChange={(value) => handleInputChange('serviceId', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha um serviço" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        {service.name} - R$ {service.price.toFixed(2)} ({service.duration}min)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!loading ? (
+                  <select 
+                    id="service"
+                    value={bookingData.serviceId} 
+                    onChange={(e) => handleInputChange('serviceId', e.target.value)}
+                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="" disabled>
+                      Escolha um serviço
+                    </option>
+                    {services && services.length > 0 ? (
+                      services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.name} - R$ {service.price ? service.price.toFixed(2) : '0,00'} ({service.duration_minutes || 0}min)
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>
+                        Nenhum serviço disponível
+                      </option>
+                    )}
+                  </select>
+                ) : (
+                  <div className="p-2 text-center text-gray-500 text-sm">
+                    Carregando serviços...
+                  </div>
+                )}
               </div>
 
               {/* Data e Horário */}
@@ -468,42 +743,99 @@ export default function PublicBooking() {
                 </div>
                 <div>
                   <Label htmlFor="appointmentTime">Horário *</Label>
-                  <Select 
-                    value={bookingData.appointmentTime} 
-                    onValueChange={(value) => handleInputChange('appointmentTime', value)}
-                    disabled={!bookingData.appointmentDate || !bookingData.serviceId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={
-                        !bookingData.serviceId 
-                          ? "Primeiro selecione um serviço" 
-                          : !bookingData.appointmentDate 
-                          ? "Primeiro selecione uma data" 
-                          : availableTimeSlots.length === 0 
-                          ? "Nenhum horário disponível" 
-                          : "Escolha um horário"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableTimeSlots.map((time) => (
-                        <SelectItem key={time} value={time}>
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            {time}
-                          </div>
-                        </SelectItem>
-                      ))}
-                      {availableTimeSlots.length === 0 && bookingData.serviceId && bookingData.appointmentDate && (
-                        <div className="p-2 text-center text-gray-500 text-sm">
-                          Nenhum horário disponível para esta data
+                  {!bookingData.serviceId ? (
+                    <div className="p-4 text-center text-gray-500 border rounded-md">
+                      Primeiro selecione um serviço
+                    </div>
+                  ) : !bookingData.appointmentDate ? (
+                    <div className="p-4 text-center text-gray-500 border rounded-md">
+                      Primeiro selecione uma data
+                    </div>
+                  ) : !bookingData.serviceId ? (
+                    <div className="p-4 text-center text-gray-500 border rounded-md">
+                      Primeiro selecione um serviço
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                        {getAllPossibleTimes(bookingData.serviceId).map((time) => {
+                          const isAvailable = availableTimeSlots.includes(time);
+                          const isOccupied = isTimeOccupied(time);
+                          const isSelected = bookingData.appointmentTime === time;
+                          
+
+                          
+                          return (
+                            <button
+                              key={time}
+                              type="button"
+                              onClick={() => isAvailable ? handleInputChange('appointmentTime', time) : null}
+                              disabled={!isAvailable}
+                              className={`
+                                p-2 text-sm rounded-md border transition-all duration-200
+                                ${isSelected 
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                  : isAvailable 
+                                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300 cursor-pointer' 
+                                  : isOccupied 
+                                  ? 'bg-red-50 text-red-700 border-red-200 cursor-not-allowed' 
+                                  : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                                }
+                              `}
+                              title={
+                                isSelected 
+                                  ? 'Horário selecionado' 
+                                  : isAvailable 
+                                  ? 'Clique para selecionar este horário' 
+                                  : isOccupied 
+                                  ? 'Horário ocupado' 
+                                  : 'Horário indisponível'
+                              }
+                            >
+                              <div className="flex flex-col items-center">
+                                <span className="font-medium">{time}</span>
+                                <span className="text-xs mt-1">
+                                  {isSelected 
+                                    ? '✓ Selecionado' 
+                                    : isAvailable 
+                                    ? '✓ Livre' 
+                                    : isOccupied 
+                                    ? '✗ Ocupado' 
+                                    : '✗ Indisponível'
+                                  }
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Legenda */}
+                      <div className="mt-4 flex flex-wrap gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-green-50 border border-green-200 rounded"></div>
+                          <span className="text-gray-600">Disponível</span>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-red-50 border border-red-200 rounded"></div>
+                          <span className="text-gray-600">Ocupado</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-gray-50 border border-gray-200 rounded"></div>
+                          <span className="text-gray-600">Indisponível</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-blue-600 rounded"></div>
+                          <span className="text-gray-600">Selecionado</span>
+                        </div>
+                      </div>
+                      
+                      {availableTimeSlots.length === 0 && (
+                        <p className="text-sm text-gray-500 mt-2 text-center">
+                          Nenhum horário disponível para esta data. Tente selecionar outra data.
+                        </p>
                       )}
-                    </SelectContent>
-                  </Select>
-                  {bookingData.serviceId && bookingData.appointmentDate && availableTimeSlots.length === 0 && (
-                    <p className="text-sm text-gray-500 mt-1">
-                      Tente selecionar outra data ou outro serviço
-                    </p>
+                    </div>
                   )}
                 </div>
               </div>

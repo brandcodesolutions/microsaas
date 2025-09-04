@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar, LogOut, Users, Clock, Share2, Copy, Plus, Edit, Trash2, Scissors } from "lucide-react";
+import { Calendar, LogOut, Users, Clock, Share2, Copy, Plus, Edit, Trash2, Scissors, Building } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 
@@ -60,9 +60,26 @@ const Dashboard = () => {
     name: '',
     description: '',
     duration_minutes: 30,
-    price: 0
+    price: 0,
+    salon_id: ''
   });
   const [editingService, setEditingService] = useState<string | null>(null);
+  
+  // Estados para o formulário do salão
+  const [showSalonForm, setShowSalonForm] = useState(false);
+  const [salonForm, setSalonForm] = useState({
+    name: '',
+    description: '',
+    address: '',
+    phone: ''
+  });
+
+  // Definir automaticamente o salon_id quando um salão estiver disponível
+  useEffect(() => {
+    if (salon?.id && !serviceForm.salon_id) {
+      setServiceForm(prev => ({ ...prev, salon_id: salon.id }));
+    }
+  }, [salon?.id, serviceForm.salon_id]);
 
   const handleLogout = async () => {
     try {
@@ -70,6 +87,89 @@ const Dashboard = () => {
       navigate('/login');
     } catch (error) {
       console.error('Erro no logout:', error);
+    }
+  };
+
+  const handleSaveSalon = async () => {
+    try {
+      console.log('🏪 Iniciando criação/atualização do salão...');
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 Usuário atual:', user?.id);
+      
+      if (!user?.id) {
+        console.error('❌ Usuário não encontrado');
+        alert('Erro: Usuário não encontrado');
+        return;
+      }
+
+      const salonData = {
+        name: salonForm.name.trim(),
+        description: salonForm.description.trim(),
+        address: salonForm.address.trim(),
+        phone: salonForm.phone.trim(),
+        owner_id: user.id,
+        slug: salonForm.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-')
+      };
+      
+      console.log('📋 Dados do salão a serem salvos:', salonData);
+
+      let result;
+      if (salon?.id) {
+        console.log('✏️ Atualizando salão existente:', salon.id);
+        // Atualizar salão existente
+        const { data, error } = await supabase
+          .from('salons')
+          .update(salonData)
+          .eq('id', salon.id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('❌ Erro ao atualizar salão:', error);
+          throw error;
+        }
+        result = data;
+        console.log('✅ Salão atualizado:', result);
+      } else {
+        console.log('🆕 Criando novo salão...');
+        // Criar novo salão
+        const { data, error } = await supabase
+          .from('salons')
+          .insert([salonData])
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('❌ Erro ao criar salão:', error);
+          console.error('Detalhes do erro:', error.message, error.details, error.hint);
+          throw error;
+        }
+        result = data;
+        console.log('✅ Salão criado:', result);
+
+        // Atualizar o perfil do usuário com o salon_id
+        console.log('🔗 Vinculando salão ao perfil do usuário...');
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .update({ salon_id: result.id })
+          .eq('id', user.id);
+        
+        if (profileError) {
+          console.warn('⚠️ Erro ao atualizar perfil:', profileError);
+        } else {
+          console.log('✅ Perfil atualizado com salon_id');
+        }
+      }
+
+      setSalon(result);
+      setShowSalonForm(false);
+      setSalonForm({ name: '', description: '', address: '', phone: '' });
+      alert(salon?.id ? 'Salão atualizado com sucesso!' : 'Salão criado com sucesso!');
+      
+    } catch (error) {
+      console.error('💥 Erro completo ao salvar salão:', error);
+      alert('Erro ao salvar salão. Verifique o console para mais detalhes.');
     }
   };
 
@@ -91,8 +191,19 @@ const Dashboard = () => {
   };
 
   const handleCreateService = async () => {
+    console.log('🔍 Tentando criar serviço...');
+    console.log('📊 Estado do salão:', salon);
+    console.log('🆔 ID do salão:', salon?.id);
+    console.log('⏳ Loading:', loading);
+    
+    if (loading) {
+      alert('Aguarde o carregamento dos dados...');
+      return;
+    }
+    
     if (!salon?.id) {
-      alert('Erro: Salão não encontrado. Tente recarregar a página.');
+      console.error('❌ Salão não encontrado no estado');
+      alert('Erro: Você precisa criar um salão primeiro. Vá para a seção "Meu Salão" e preencha os dados.');
       return;
     }
     
@@ -182,7 +293,7 @@ const Dashboard = () => {
   };
 
   const cancelServiceForm = () => {
-    setServiceForm({ name: '', description: '', duration_minutes: 30, price: 0 });
+    setServiceForm({ name: '', description: '', duration_minutes: 30, price: 0, salon_id: '' });
     setEditingService(null);
     setShowServiceForm(false);
   };
@@ -768,7 +879,11 @@ const Dashboard = () => {
       }
       
       if (salonData) {
+        console.log('✅ Salão carregado com sucesso:', salonData);
         setSalon(salonData);
+      } else {
+        console.log('⚠️ Nenhum salão encontrado para o usuário');
+        setSalon(null);
       }
       
       // Carregar agendamentos do salão do usuário (se for proprietário)
@@ -880,6 +995,119 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Meu Salão */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Meu Salão
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!salon ? (
+              <div className="text-center py-8">
+                <Building className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500 mb-4">Você ainda não tem um salão cadastrado.</p>
+                <p className="text-sm text-gray-400 mb-6">Crie seu salão para começar a gerenciar serviços e agendamentos.</p>
+                <Button 
+                  onClick={() => setShowSalonForm(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Criar Meu Salão
+                </Button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">{salon.name}</h3>
+                    <p className="text-gray-600">{salon.description}</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      📍 {salon.address} | 📞 {salon.phone}
+                    </p>
+                  </div>
+                  <Button 
+                     onClick={() => {
+                       setSalonForm({
+                         name: salon.name || '',
+                         description: salon.description || '',
+                         address: salon.address || '',
+                         phone: salon.phone || ''
+                       });
+                       setShowSalonForm(true);
+                     }}
+                     variant="outline"
+                     size="sm"
+                   >
+                     <Edit className="h-4 w-4 mr-1" />
+                     Editar
+                   </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Formulário do Salão */}
+            {showSalonForm && (
+              <div className="border-t pt-6 mt-6">
+                <h4 className="font-medium mb-4">{salon ? 'Editar Salão' : 'Criar Novo Salão'}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Nome do Salão *</label>
+                    <Input
+                      value={salonForm.name}
+                      onChange={(e) => setSalonForm({...salonForm, name: e.target.value})}
+                      placeholder="Ex: Salão Beleza Total"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Telefone *</label>
+                    <Input
+                      value={salonForm.phone}
+                      onChange={(e) => setSalonForm({...salonForm, phone: e.target.value})}
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1">Endereço *</label>
+                    <Input
+                      value={salonForm.address}
+                      onChange={(e) => setSalonForm({...salonForm, address: e.target.value})}
+                      placeholder="Rua, número, bairro, cidade"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium mb-1">Descrição</label>
+                    <Textarea
+                      value={salonForm.description}
+                      onChange={(e) => setSalonForm({...salonForm, description: e.target.value})}
+                      placeholder="Descreva seu salão..."
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    onClick={handleSaveSalon}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled={!salonForm.name.trim() || !salonForm.phone.trim() || !salonForm.address.trim()}
+                  >
+                    {salon ? 'Salvar Alterações' : 'Criar Salão'}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShowSalonForm(false);
+                      setSalonForm({ name: '', description: '', address: '', phone: '' });
+                    }}
+                    variant="outline"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Agendamentos */}
         <Card>
@@ -1039,6 +1267,22 @@ const Dashboard = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
+                    <Label htmlFor="service-salon">Salão *</Label>
+                    <select
+                      id="service-salon"
+                      value={serviceForm.salon_id || salon?.id || ''}
+                      onChange={(e) => setServiceForm(prev => ({ ...prev, salon_id: e.target.value }))}
+                      className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      {!salon ? (
+                        <option value="">Nenhum salão encontrado</option>
+                      ) : (
+                        <option value={salon.id}>{salon.name}</option>
+                      )}
+                    </select>
+                  </div>
+                  <div>
                     <Label htmlFor="service-name">Nome do Serviço *</Label>
                     <Input
                       id="service-name"
@@ -1091,7 +1335,7 @@ const Dashboard = () => {
                   <Button
                     onClick={editingService ? handleEditService : handleCreateService}
                     className="bg-green-600 hover:bg-green-700 text-white"
-                    disabled={!serviceForm.name.trim()}
+                    disabled={!serviceForm.name.trim() || !serviceForm.salon_id}
                   >
                     {editingService ? 'Salvar Alterações' : 'Criar Serviço'}
                   </Button>

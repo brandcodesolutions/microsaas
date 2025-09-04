@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.salons (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
+  owner_id UUID REFERENCES auth.users(id) NOT NULL,
   address TEXT,
   phone TEXT,
   email TEXT,
