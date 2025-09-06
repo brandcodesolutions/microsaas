@@ -16,6 +16,13 @@ interface Salon {
   phone?: string;
   email?: string;
   description?: string;
+  theme_color?: string;
+  logo_url?: string;
+  cover_image_url?: string;
+  opening_time?: string;
+  closing_time?: string;
+  instagram?: string;
+  whatsapp?: string;
 }
 
 interface Service {
@@ -149,17 +156,16 @@ export default function PublicBooking() {
           let hasConflict = false;
           
           for (const appointment of appointments || []) {
-            const appointmentStart = new Date(`2000-01-01T${appointment.appointment_time}:00`);
+            // Normalizar o formato do horário do agendamento (remover segundos se existir)
+            const appointmentTimeNormalized = appointment.appointment_time.substring(0, 5);
+            const appointmentStart = new Date(`2000-01-01T${appointmentTimeNormalized}:00`);
             const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
-            
-
             
             // Verificar sobreposição - dois intervalos se sobrepõem se:
             // NÃO (fim1 <= início2 OU início1 >= fim2)
             // Ou seja, se sobrepõem se: fim1 > início2 E início1 < fim2
             if (slotEnd > appointmentStart && slotStart < appointmentEnd) {
               hasConflict = true;
-
               break;
             }
           }
@@ -245,7 +251,9 @@ export default function PublicBooking() {
   // Função para verificar se um horário está ocupado
   const isTimeOccupied = (time: string) => {
     return occupiedTimeSlots.some(appointment => {
-      const appointmentStart = new Date(`2000-01-01T${appointment.appointment_time}:00`);
+      // Normalizar o formato do horário do agendamento (remover segundos se existir)
+      const appointmentTimeNormalized = appointment.appointment_time.substring(0, 5);
+      const appointmentStart = new Date(`2000-01-01T${appointmentTimeNormalized}:00`);
       const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
       const slotTime = new Date(`2000-01-01T${time}:00`);
       
@@ -305,7 +313,7 @@ export default function PublicBooking() {
       const isSlug = slugRegex.test(salonId);
       const { data: salonData, error: salonError } = await supabase
         .from('salons')
-        .select('*')
+        .select('id, name, address, phone, email, description, theme_color, logo_url, cover_image_url, opening_time, closing_time, instagram, whatsapp')
         .eq(isSlug ? 'slug' : 'id', salonId)
         .single();
 
@@ -476,12 +484,38 @@ export default function PublicBooking() {
 
       // selectedService já foi obtido anteriormente na verificação de conflitos
 
+      // Determinar o salon_id correto para inserção
+      let salonIdForInsert = salon?.id;
+      if (!salon?.id) {
+        setError('Erro: Salão não encontrado.');
+        setSubmitting(false);
+        return;
+      }
+      
+      if (!isValidUUID(salon.id)) {
+        // ID de teste - usar o UUID real do salão padrão
+        salonIdForInsert = '32b4dcc5-05b0-4116-9a5b-27c5914d915f';
+      }
+
+      // Determinar o service_id correto para inserção
+      let serviceIdForInsert = bookingData.serviceId;
+      if (!isValidUUID(bookingData.serviceId)) {
+        // ID de teste - usar um UUID real de serviço padrão
+        // Mapear IDs de teste para UUIDs reais
+        const serviceMapping: { [key: string]: string } = {
+          'service-1': '550e8400-e29b-41d4-a716-446655440001',
+          'service-2': '550e8400-e29b-41d4-a716-446655440002', 
+          'service-3': '550e8400-e29b-41d4-a716-446655440003'
+        };
+        serviceIdForInsert = serviceMapping[bookingData.serviceId] || '550e8400-e29b-41d4-a716-446655440001';
+      }
+
       // Criar o agendamento (temporariamente sem notes devido ao cache do schema)
       const { error: insertError } = await supabase
         .from('appointments')
         .insert({
-          salon_id: salon?.id,
-          service_id: bookingData.serviceId,
+          salon_id: salonIdForInsert,
+          service_id: serviceIdForInsert,
           service_name: selectedService.name,
           client_name: bookingData.clientName,
           client_email: bookingData.clientEmail,
@@ -496,7 +530,10 @@ export default function PublicBooking() {
       // TODO: Adicionar notes após resolver cache do schema
 
       if (insertError) {
-        throw insertError;
+        console.error('Erro detalhado ao inserir agendamento:', insertError);
+        setError(`Erro ao criar agendamento: ${insertError.message || 'Erro desconhecido'}`);
+        setSubmitting(false);
+        return;
       }
 
       setSuccess(true);
@@ -539,9 +576,9 @@ export default function PublicBooking() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #8B5CF610, #8B5CF605)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#8B5CF6' }}></div>
           <p className="text-gray-600">Carregando...</p>
         </div>
       </div>
@@ -550,11 +587,14 @@ export default function PublicBooking() {
 
   if (error && !salon) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'linear-gradient(135deg, #8B5CF610, #8B5CF605)' }}>
+        <Card className="w-full max-w-md shadow-lg">
           <CardContent className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => navigate('/')} variant="outline">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-500 text-2xl">⚠️</span>
+            </div>
+            <p className="text-red-600 mb-6 text-sm sm:text-base">{error}</p>
+            <Button onClick={() => navigate('/')} variant="outline" className="w-full">
               Voltar ao Início
             </Button>
           </CardContent>
@@ -563,17 +603,29 @@ export default function PublicBooking() {
     );
   }
 
+  const themeColor = salon?.theme_color || '#8B5CF6';
+  const gradientBg = `linear-gradient(135deg, ${themeColor}10, ${themeColor}05)`;
+
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: gradientBg }}>
+        <Card className="w-full max-w-md shadow-lg">
           <CardContent className="text-center py-8">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Agendamento Confirmado!</h2>
-            <p className="text-gray-600 mb-4">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: `${themeColor}20` }}>
+              <CheckCircle className="w-12 h-12" style={{ color: themeColor }} />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Agendamento Confirmado!</h2>
+            <p className="text-gray-600 mb-6 text-sm sm:text-base leading-relaxed">
               Seu agendamento foi realizado com sucesso. Você receberá uma confirmação em breve.
             </p>
-            <Button onClick={() => setSuccess(false)}>
+            <Button 
+              onClick={() => setSuccess(false)}
+              className="w-full h-12 font-semibold"
+              style={{ 
+                backgroundColor: themeColor,
+                borderColor: themeColor
+              }}
+            >
               Fazer Novo Agendamento
             </Button>
           </CardContent>
@@ -583,43 +635,88 @@ export default function PublicBooking() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
+    <div className="min-h-screen" style={{ background: gradientBg }}>
+      <div className="container mx-auto px-4 max-w-2xl py-4 sm:py-8">
         {/* Header do Salão */}
-        <Card className="mb-8">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold text-gray-900">{salon?.name}</CardTitle>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-4 text-gray-600">
-              {salon?.address && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  <span className="text-sm">{salon.address}</span>
-                </div>
-              )}
-              {salon?.phone && (
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
-                  <span className="text-sm">{salon.phone}</span>
-                </div>
-              )}
-              {salon?.email && (
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  <span className="text-sm">{salon.email}</span>
+        <Card className="mb-6 overflow-hidden shadow-lg">
+          {/* Imagem de Capa */}
+          {salon?.cover_image_url ? (
+            <div 
+              className="h-48 sm:h-64 bg-cover bg-center relative"
+              style={{ backgroundImage: `url(${salon.cover_image_url})` }}
+            >
+              <div 
+                className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"
+              ></div>
+              {salon?.logo_url && (
+                <div className="absolute bottom-4 left-4">
+                  <img 
+                    src={salon.logo_url} 
+                    alt={`Logo ${salon.name}`}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white object-cover bg-white shadow-lg"
+                  />
                 </div>
               )}
             </div>
+          ) : (
+            <div 
+              className="h-32 sm:h-40 bg-gradient-to-r relative"
+              style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}CC)` }}
+            >
+              {salon?.logo_url && (
+                <div className="absolute bottom-4 left-4">
+                  <img 
+                    src={salon.logo_url} 
+                    alt={`Logo ${salon.name}`}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white object-cover bg-white shadow-lg"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">{salon?.name}</CardTitle>
+            
+            {/* Informações de Contato */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600 mb-4">
+              {salon?.address && (
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <MapPin className="w-4 h-4 flex-shrink-0" style={{ color: themeColor }} />
+                  <span className="text-center sm:text-left">{salon.address}</span>
+                </div>
+              )}
+              {salon?.phone && (
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <Phone className="w-4 h-4 flex-shrink-0" style={{ color: themeColor }} />
+                  <span>{salon.phone}</span>
+                </div>
+              )}
+              {salon?.email && (
+                <div className="flex items-center justify-center sm:justify-start gap-2 sm:col-span-2">
+                  <Mail className="w-4 h-4 flex-shrink-0" style={{ color: themeColor }} />
+                  <span>{salon.email}</span>
+                </div>
+              )}
+              {salon?.opening_time && salon?.closing_time && (
+                <div className="flex items-center justify-center sm:justify-start gap-2 sm:col-span-2">
+                  <Clock className="w-4 h-4 flex-shrink-0" style={{ color: themeColor }} />
+                  <span>Funcionamento: {salon.opening_time} às {salon.closing_time}</span>
+                </div>
+              )}
+            </div>
+            
             {salon?.description && (
-              <p className="text-gray-600 mt-4">{salon.description}</p>
+              <p className="text-gray-600 text-sm sm:text-base leading-relaxed">{salon.description}</p>
             )}
           </CardHeader>
         </Card>
 
         {/* Formulário de Agendamento */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
+        <Card className="shadow-lg">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: themeColor }} />
               Agendar Horário
             </CardTitle>
           </CardHeader>
@@ -825,7 +922,11 @@ export default function PublicBooking() {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full h-12 text-base font-semibold transition-all duration-200 hover:shadow-lg" 
+                style={{ 
+                  backgroundColor: themeColor,
+                  borderColor: themeColor
+                }}
                 disabled={!isFormValid() || submitting}
               >
                 {submitting ? 'Agendando...' : 'Confirmar Agendamento'}

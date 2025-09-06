@@ -146,6 +146,17 @@ const Agendamento = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-secondary/5 to-accent/5">
       {/* Header */}
@@ -333,8 +344,8 @@ const Agendamento = () => {
                   <Textarea
                     id="notes"
                     placeholder="Alguma observação especial?"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    value={formData.observations}
+                    onChange={(e) => setFormData({...formData, observations: e.target.value})}
                     rows={3}
                   />
                 </div>

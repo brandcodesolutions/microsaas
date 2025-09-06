@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Teste de Renderização</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug - Teste de Renderização</h1>
+        
+        <div class="status success">
+            ✅ HTML estático está funcionando
+        </div>
+        
+        <div class="status info">
+            ℹ️ Servidor Vite está respondendo corretamente
+        </div>
+        
+        <div class="status error" id="react-status">
+            ❌ React não está renderizando (testando...)
+        </div>
+        
+        <h2>Testes Realizados:</h2>
+        <ul>
+            <li>✅ Servidor Vite funcionando na porta 8081</li>
+            <li>✅ Arquivos estáticos sendo servidos</li>
+            <li>❌ Aplicação React não renderiza</li>
+            <li>❌ Mesmo componente simples não aparece</li>
+        </ul>
+        
+        <h2>Próximos Passos:</h2>
+        <ol>
+            <li>Verificar console do navegador (F12)</li>
+            <li>Testar sem provedores React</li>
+            <li>Verificar se main.tsx está sendo carregado</li>
+        </ol>
+        
+        <div style="margin-top: 20px;">
+            <a href="/" style="color: blue; text-decoration: underline;">← Voltar para aplicação React</a>
+        </div>
+    </div>
+    
+    <script>
+        console.log('🔍 Debug HTML carregado com sucesso!');
+        console.log('📍 URL atual:', window.location.href);
+        console.log('🌐 User Agent:', navigator.userAgent);
+        
+        // Testar se conseguimos acessar o elemento root
+        setTimeout(() => {
+            const root = document.getElementById('root');
+            if (root) {
+                console.log('✅ Elemento #root encontrado no DOM');
+            } else {
+                console.log('❌ Elemento #root NÃO encontrado');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -367,6 +367,7 @@ export const appointmentService = {
         .select('*')
         .eq('user_id', userId)
         .order('appointment_date', { ascending: true })
+        .order('appointment_time', { ascending: true })
 
       if (error) {
         return { success: false, error: error.message }

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React Test Debug</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+      }
+      #root {
+        min-height: 100vh;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+      }
+      .debug-info {
+        background-color: #e3f2fd;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+        border-left: 4px solid #2196f3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="debug-info">
+      <h3>🔍 Debug Info</h3>
+      <p>Esta página simula o index.html original</p>
+      <p>Elemento #root criado manualmente</p>
+    </div>
+    
+    <div id="root">
+      <div style="padding: 20px; text-align: center;">
+        <h1>⏳ Carregando React...</h1>
+        <p>Se esta mensagem não desaparecer, há um problema no carregamento do React</p>
+      </div>
+    </div>
+    
+    <script>
+      console.log('🔍 react-test.html carregado');
+      console.log('📍 Elemento #root:', document.getElementById('root'));
+      
+      // Simular o carregamento do main.tsx
+      setTimeout(() => {
+        console.log('⏰ Simulando carregamento do main.tsx...');
+        const root = document.getElementById('root');
+        if (root) {
+          root.innerHTML = `
+            <div style="padding: 20px; background: white; min-height: 100vh;">
+              <h1 style="color: green;">✅ React Simulado Funcionando!</h1>
+              <p>Se você vê isso, o problema NÃO é no HTML ou no elemento #root</p>
+              <p>O problema está no carregamento do main.tsx ou na compilação do React</p>
+            </div>
+          `;
+        }
+      }, 2000);
+    </script>
+    
+    <!-- Tentar carregar o main.tsx manualmente -->
+    <script type="module">
+      console.log('🚀 Tentando carregar main.tsx...');
+      try {
+        import('/src/main.tsx').then(() => {
+          console.log('✅ main.tsx carregado com sucesso!');
+        }).catch(error => {
+          console.error('❌ Erro ao carregar main.tsx:', error);
+        });
+      } catch (error) {
+        console.error('❌ Erro no import do main.tsx:', error);
+      }
+    </script>
+  </body>
+</html>

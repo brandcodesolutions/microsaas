@@ -1,12 +1,16 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Test from "./pages/Test";
+import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import Financeiro from "./pages/Financeiro";
+import PerfilSalao from "./pages/PerfilSalao";
+import Configuracoes from "./pages/Configuracoes";
 import Agendamento from "./pages/Agendamento";
 import PublicBooking from "./pages/PublicBooking";
 import NotFound from "./pages/NotFound";
@@ -18,7 +22,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
-      <Sonner />
       <BrowserRouter
         future={{
           v7_startTransition: true,
@@ -27,11 +30,28 @@ const App = () => (
       >
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/test" element={<Test />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/financeiro" element={
+            <ProtectedRoute>
+              <Financeiro />
+            </ProtectedRoute>
+          } />
+          <Route path="/perfil-salao" element={
+            <ProtectedRoute>
+              <PerfilSalao />
+            </ProtectedRoute>
+          } />
+          <Route path="/configuracoes" element={
+            <ProtectedRoute>
+              <Configuracoes />
             </ProtectedRoute>
           } />
           <Route path="/agendamento/:salonId" element={<Agendamento />} />

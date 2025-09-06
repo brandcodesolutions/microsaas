@@ -45,7 +45,7 @@ const Register = () => {
       }
 
       if (authData.user) {
-        navigate('/login');
+        navigate('/onboarding');
       }
     } catch (error: any) {
       setError(error.message || "Erro ao criar conta");
