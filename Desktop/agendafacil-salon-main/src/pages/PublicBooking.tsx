@@ -101,7 +101,7 @@ export default function PublicBooking() {
       if (!isValidUUID(salon.id)) {
         // ID de teste - usar o UUID real do salão padrão
         salonIdForQuery = '32b4dcc5-05b0-4116-9a5b-27c5914d915f';
-        console.log('🔄 Usando UUID real para buscar agendamentos:', salonIdForQuery);
+
       }
       
 
@@ -119,16 +119,7 @@ export default function PublicBooking() {
       }
 
       appointments = appointmentsData || [];
-      console.log(`📅 RESULTADO DA BUSCA:`);
-      console.log(`   Agendamentos encontrados para ${date}:`, appointments.length);
-      console.log('   Detalhes completos:', appointments);
-      console.log('🎯 Serviço selecionado:', selectedService);
-      console.log('⏱️ Duração do serviço:', serviceDuration, 'minutos');
-      
       // Se não há agendamentos, todos os horários deveriam estar disponíveis
-      if (appointments.length === 0) {
-        console.log('✅ NENHUM AGENDAMENTO ENCONTRADO - TODOS HORÁRIOS DEVERIAM ESTAR DISPONÍVEIS');
-      }
       
       const availableTimes = [];
       const serviceDuration = selectedService.duration_minutes;
@@ -161,29 +152,19 @@ export default function PublicBooking() {
             const appointmentStart = new Date(`2000-01-01T${appointment.appointment_time}:00`);
             const appointmentEnd = new Date(appointmentStart.getTime() + appointment.duration_minutes * 60000);
             
-            // Log detalhado para debug
-            if (timeString === '09:00') {
-              console.log(`🕘 Verificando slot ${timeString}:`);
-              console.log(`   Slot: ${slotStart.toTimeString()} - ${slotEnd.toTimeString()}`);
-              console.log(`   Agendamento: ${appointmentStart.toTimeString()} - ${appointmentEnd.toTimeString()}`);
-              console.log(`   Duração agendamento: ${appointment.duration_minutes}min`);
-            }
+
             
             // Verificar sobreposição - dois intervalos se sobrepõem se:
             // NÃO (fim1 <= início2 OU início1 >= fim2)
             // Ou seja, se sobrepõem se: fim1 > início2 E início1 < fim2
             if (slotEnd > appointmentStart && slotStart < appointmentEnd) {
               hasConflict = true;
-              if (timeString === '09:00') {
-                console.log(`❌ CONFLITO DETECTADO para ${timeString}!`);
-              }
+
               break;
             }
           }
           
-          if (timeString === '09:00') {
-            console.log(`✅ Resultado para ${timeString}: ${hasConflict ? 'BLOQUEADO' : 'DISPONÍVEL'}`);
-          }
+
           
           if (!hasConflict) {
             availableTimes.push(timeString);
@@ -287,13 +268,7 @@ export default function PublicBooking() {
   }, [bookingData.appointmentDate, bookingData.serviceId, salon?.id]);
 
   const loadAvailableTimeSlots = async () => {
-    console.log('⏰ loadAvailableTimeSlots chamada:', {
-      appointmentDate: bookingData.appointmentDate,
-      serviceId: bookingData.serviceId
-    });
-    
     if (!bookingData.appointmentDate || !bookingData.serviceId) {
-      console.log('⚠️ Dados insuficientes para carregar horários');
       return;
     }
     
@@ -335,7 +310,7 @@ export default function PublicBooking() {
         .single();
 
       if (salonError) {
-        console.log('⚠️ Salão não encontrado, usando dados de teste');
+
         // Usar dados de teste para desenvolvimento
         const testSalon = {
           id: 'test-salon',
@@ -379,7 +354,7 @@ export default function PublicBooking() {
           }
         ];
         
-        console.log('✅ Usando serviços de teste:', testServices);
+
         setServices(testServices);
         setLoading(false);
         return;
@@ -405,7 +380,7 @@ export default function PublicBooking() {
           };
         });
         
-        console.log('✅ Serviços validados:', validServices);
+
         setServices(validServices);
       }
     } catch (error) {
@@ -419,12 +394,9 @@ export default function PublicBooking() {
 
 
   const handleInputChange = (field: keyof BookingData, value: string) => {
-    console.log('🔄 handleInputChange:', field, value);
-    
     try {
       setBookingData(prev => {
         const newData = { ...prev, [field]: value };
-        console.log('📝 New booking data:', newData);
         return newData;
       });
     } catch (error) {
@@ -460,7 +432,7 @@ export default function PublicBooking() {
         if (!isValidUUID(salon.id)) {
           // ID de teste - usar o UUID real do salão padrão
           salonIdForQuery = '32b4dcc5-05b0-4116-9a5b-27c5914d915f';
-          console.log('🔄 Usando UUID real para verificar conflitos:', salonIdForQuery);
+
         }
         
         const { data: existingAppointments, error: checkError } = await supabase
@@ -499,7 +471,7 @@ export default function PublicBooking() {
           }
         }
       } else {
-        console.log('⚠️ Pulando verificação de conflitos para ID de teste:', salon?.id);
+
       }
 
       // selectedService já foi obtido anteriormente na verificação de conflitos
