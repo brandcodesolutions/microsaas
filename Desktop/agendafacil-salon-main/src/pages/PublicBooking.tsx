@@ -104,10 +104,7 @@ export default function PublicBooking() {
         console.log('🔄 Usando UUID real para buscar agendamentos:', salonIdForQuery);
       }
       
-      console.log('🔍 BUSCANDO AGENDAMENTOS:');
-      console.log('   Salon ID:', salonIdForQuery);
-      console.log('   Data:', date);
-      console.log('   Data tipo:', typeof date);
+
 
       const { data: appointmentsData, error } = await supabase
         .from('appointments')
@@ -307,8 +304,7 @@ export default function PublicBooking() {
         getOccupiedTimesForDate(bookingData.appointmentDate)
       ]);
       
-      console.log('✅ Horários carregados:', times);
-      console.log('🚫 Horários ocupados:', occupied);
+
       
       setAvailableTimeSlots(times);
       setOccupiedTimeSlots(occupied);
@@ -400,11 +396,8 @@ export default function PublicBooking() {
       if (servicesError) {
         console.error('Erro ao carregar serviços:', servicesError);
       } else {
-        console.log('🔍 Serviços carregados:', servicesData);
-        
         // Validar dados dos serviços
         const validServices = (servicesData || []).map(service => {
-          console.log('🔍 Validando serviço:', service);
           return {
             ...service,
             price: service.price || 0,
