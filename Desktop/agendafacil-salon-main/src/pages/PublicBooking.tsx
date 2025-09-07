@@ -322,11 +322,18 @@ export default function PublicBooking() {
         // Usar dados de teste para desenvolvimento
         const testSalon = {
           id: 'test-salon',
-          name: 'Salão de Teste',
+          name: 'Alison Corte',
           address: 'Rua de Teste, 123',
           phone: '(11) 99999-9999',
           email: 'teste@salon.com',
-          description: 'Salão de teste para desenvolvimento'
+          description: 'Salão de beleza especializado em cortes modernos e coloração',
+          theme_color: '#8B5CF6',
+          logo_url: 'https://via.placeholder.com/150x150/8B5CF6/FFFFFF?text=AC',
+          cover_image_url: 'https://via.placeholder.com/800x400/8B5CF6/FFFFFF?text=Salon+Cover',
+          opening_time: '09:00:00',
+          closing_time: '18:00:00',
+          instagram: '@alison_corte',
+          whatsapp: '11999999999'
         };
         setSalon(testSalon);
         
@@ -660,23 +667,35 @@ export default function PublicBooking() {
             </div>
           ) : (
             <div 
-              className="h-32 sm:h-40 bg-gradient-to-r relative"
+              className="h-40 sm:h-48 bg-gradient-to-r relative flex items-center justify-center"
               style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}CC)` }}
             >
-              {salon?.logo_url && (
-                <div className="absolute bottom-4 left-4">
+              {salon?.logo_url ? (
+                <div className="flex flex-col items-center">
                   <img 
                     src={salon.logo_url} 
                     alt={`Logo ${salon.name}`}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white object-cover bg-white shadow-lg"
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white object-cover bg-white shadow-lg mb-3"
                   />
+                  <h2 className="text-white text-xl sm:text-2xl font-bold text-center">{salon?.name}</h2>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 border-4 border-white flex items-center justify-center mb-3 mx-auto">
+                    <span className="text-white text-2xl sm:text-3xl font-bold">
+                      {salon?.name?.charAt(0) || 'S'}
+                    </span>
+                  </div>
+                  <h2 className="text-white text-xl sm:text-2xl font-bold">{salon?.name}</h2>
                 </div>
               )}
             </div>
           )}
           
           <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">{salon?.name}</CardTitle>
+            {salon?.cover_image_url && (
+              <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">{salon?.name}</CardTitle>
+            )}
             
             {/* Informações de Contato */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600 mb-4">

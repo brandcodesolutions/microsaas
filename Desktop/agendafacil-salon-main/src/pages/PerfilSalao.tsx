@@ -147,7 +147,9 @@ const PerfilSalao = () => {
           whatsapp_number: salon.whatsapp_number,
           opening_time: salon.opening_time,
           closing_time: salon.closing_time,
-          theme_color: salon.theme_color
+          theme_color: salon.theme_color,
+          logo_url: salon.logo_url,
+          cover_image_url: salon.cover_image_url
         })
         .eq('id', salon.id);
 
