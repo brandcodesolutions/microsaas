@@ -118,13 +118,18 @@ const Financeiro = () => {
           startDate.setMonth(now.getMonth() - 1);
       }
 
+      // Debug: Log date filters
+      console.log('🗓️ Filtros de data:', {
+        selectedPeriod,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0],
+        salon_id: salon.id
+      });
+
       // Get appointments data with service names
       let query = supabase
         .from('appointments')
-        .select(`
-          *,
-          services (name, price)
-        `)
+        .select('*')
         .eq('salon_id', salon.id)
         .gte('appointment_date', startDate.toISOString().split('T')[0]);
       
@@ -134,6 +139,12 @@ const Financeiro = () => {
       }
       
       const { data: appointments } = await query;
+      
+      // Debug: Log appointments found
+      console.log('📅 Agendamentos encontrados:', appointments?.length || 0);
+      if (appointments && appointments.length > 0) {
+        console.log('📋 Primeiros agendamentos:', appointments.slice(0, 3));
+      }
 
       if (appointments) {
         const completed = appointments.filter(apt => apt.status === 'completed');
@@ -285,8 +296,8 @@ const Financeiro = () => {
     const servicesMap: { [key: string]: { count: number; revenue: number } } = {};
     
     appointments.forEach(apt => {
-      if (apt.services?.name) {
-        const serviceName = apt.services.name;
+      if (apt.service_name) {
+        const serviceName = apt.service_name;
         if (!servicesMap[serviceName]) {
           servicesMap[serviceName] = { count: 0, revenue: 0 };
         }

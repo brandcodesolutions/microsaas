@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Camera, ExternalLink, Palette, Share2, QrCode, Instagram, MessageCircle, Mail, Clock, MapPin, Phone } from "lucide-react";
+import { Camera, ExternalLink, Palette, Share2, QrCode, Instagram, MessageCircle, Mail, Clock, MapPin, Phone, Plus, Edit, Trash2, X } from "lucide-react";
 import MobileLayout from "@/components/MobileLayout";
 import { supabase } from "@/lib/supabase";
 
@@ -20,9 +20,7 @@ interface SalonData {
   whatsapp_number: string;
   opening_time: string;
   closing_time: string;
-  logo_url?: string;
   cover_image_url?: string;
-  theme_color: string;
 }
 
 interface Service {
@@ -40,8 +38,15 @@ const PerfilSalao = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingService, setEditingService] = useState<Service | null>(null);
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    description: '',
+    price_cents: 0,
+    duration_minutes: 60
+  });
   const [error, setError] = useState("");
-  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
 
   useEffect(() => {
@@ -66,17 +71,13 @@ const PerfilSalao = () => {
         return;
       }
 
-      setSalon({
-        ...salonData,
-        theme_color: salonData.theme_color || '#6366f1'
-      });
+      setSalon(salonData);
 
       // Load services
       const { data: servicesData } = await supabase
         .from('services')
         .select('*')
-        .eq('salon_id', salonData.id)
-        .eq('is_active', true);
+        .eq('salon_id', salonData.id);
 
       if (servicesData) {
         setServices(servicesData);
@@ -88,8 +89,7 @@ const PerfilSalao = () => {
     }
   };
 
-  const handleImageUpload = async (file: File, type: 'logo' | 'cover') => {
-    if (type === 'logo') setUploadingLogo(true);
+  const handleImageUpload = async (file: File, type: 'cover') => {
     if (type === 'cover') setUploadingCover(true);
     
     try {
@@ -111,13 +111,12 @@ const PerfilSalao = () => {
         .getPublicUrl(filePath);
 
       // Update salon data
-      const updateField = type === 'logo' ? 'logo_url' : 'cover_image_url';
-      setSalon(prev => prev ? { ...prev, [updateField]: publicUrl } : null);
+      setSalon(prev => prev ? { ...prev, cover_image_url: publicUrl } : null);
 
       // Save to database
       const { error: updateError } = await supabase
         .from('salons')
-        .update({ [updateField]: publicUrl })
+        .update({ cover_image_url: publicUrl })
         .eq('id', salon?.id);
 
       if (updateError) {
@@ -126,7 +125,6 @@ const PerfilSalao = () => {
     } catch (error: any) {
       setError(error.message);
     } finally {
-      if (type === 'logo') setUploadingLogo(false);
       if (type === 'cover') setUploadingCover(false);
     }
   };
@@ -147,8 +145,6 @@ const PerfilSalao = () => {
           whatsapp_number: salon.whatsapp_number,
           opening_time: salon.opening_time,
           closing_time: salon.closing_time,
-          theme_color: salon.theme_color,
-          logo_url: salon.logo_url,
           cover_image_url: salon.cover_image_url
         })
         .eq('id', salon.id);
@@ -171,6 +167,99 @@ const PerfilSalao = () => {
       style: 'currency',
       currency: 'BRL'
     }).format(cents / 100);
+  };
+
+  const handleAddService = () => {
+    setEditingService(null);
+    setServiceForm({
+      name: '',
+      description: '',
+      price_cents: 0,
+      duration_minutes: 60
+    });
+    setShowServiceModal(true);
+  };
+
+  const handleEditService = (service: Service) => {
+    setEditingService(service);
+    setServiceForm({
+      name: service.name,
+      description: service.description,
+      price_cents: service.price_cents,
+      duration_minutes: service.duration_minutes
+    });
+    setShowServiceModal(true);
+  };
+
+  const handleDeleteService = async (serviceId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este serviço?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', serviceId);
+
+      if (error) {
+        setError('Erro ao excluir serviço: ' + error.message);
+      } else {
+        setServices(services.filter(s => s.id !== serviceId));
+      }
+    } catch (error: any) {
+      setError(error.message);
+    }
+  };
+
+  const handleSaveService = async () => {
+    if (!salon || !serviceForm.name.trim()) return;
+    
+    try {
+      if (editingService) {
+        // Editar serviço existente
+        const { error } = await supabase
+          .from('services')
+          .update({
+            name: serviceForm.name,
+            description: serviceForm.description,
+            price_cents: serviceForm.price_cents,
+            duration_minutes: serviceForm.duration_minutes
+          })
+          .eq('id', editingService.id);
+
+        if (error) {
+          setError('Erro ao atualizar serviço: ' + error.message);
+        } else {
+          setServices(services.map(s => 
+            s.id === editingService.id 
+              ? { ...s, ...serviceForm }
+              : s
+          ));
+          setShowServiceModal(false);
+        }
+      } else {
+        // Adicionar novo serviço
+        const { data, error } = await supabase
+          .from('services')
+          .insert({
+            salon_id: salon.id,
+            name: serviceForm.name,
+            description: serviceForm.description,
+            price_cents: serviceForm.price_cents,
+            duration_minutes: serviceForm.duration_minutes
+          })
+          .select()
+          .single();
+
+        if (error) {
+          setError('Erro ao adicionar serviço: ' + error.message);
+        } else {
+          setServices([...services, data]);
+          setShowServiceModal(false);
+        }
+      }
+    } catch (error: any) {
+      setError(error.message);
+    }
   };
 
   const publicUrl = `${window.location.origin}/agendamento-publico/${salon?.id}`;
@@ -390,68 +479,7 @@ const PerfilSalao = () => {
                 <CardTitle>Personalização Visual</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="theme_color">Cor do Tema</Label>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <Input
-                      id="theme_color"
-                      type="color"
-                      value={salon.theme_color}
-                      onChange={(e) => setSalon(prev => prev ? {...prev, theme_color: e.target.value} : null)}
-                      className="w-16 h-10 p-1 border rounded"
-                    />
-                    <Input
-                      value={salon.theme_color}
-                      onChange={(e) => setSalon(prev => prev ? {...prev, theme_color: e.target.value} : null)}
-                      placeholder="#6366f1"
-                      className="flex-1"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <Label>Logo do Salão</Label>
-                    <div className="mt-2">
-                      {salon.logo_url ? (
-                        <div className="relative">
-                          <img 
-                            src={salon.logo_url} 
-                            alt="Logo" 
-                            className="w-full h-32 object-cover rounded-lg border"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              disabled={uploadingLogo}
-                            />
-                            <Button variant="secondary" size="sm" disabled={uploadingLogo}>
-                              {uploadingLogo ? "Enviando..." : "Alterar"}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
-                          <Camera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm text-gray-600 mb-2">Clique para adicionar logo</p>
-                          <Button variant="outline" size="sm" disabled={uploadingLogo}>
-                            {uploadingLogo ? "Enviando..." : "Selecionar Arquivo"}
-                          </Button>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'logo')}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            disabled={uploadingLogo}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
+                <div className="grid grid-cols-1 gap-6">
                   <div>
                     <Label>Foto de Capa</Label>
                     <div className="mt-2">
@@ -511,7 +539,7 @@ const PerfilSalao = () => {
                       style={{ 
                         background: salon.cover_image_url 
                           ? `url(${salon.cover_image_url})` 
-                          : `linear-gradient(to right, ${salon.theme_color}, ${salon.theme_color}80)`,
+                          : `linear-gradient(to right, #6366f1, #6366f180)`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center'
                       }}
@@ -519,17 +547,8 @@ const PerfilSalao = () => {
                       {salon.cover_image_url && (
                         <div 
                           className="absolute inset-0 bg-gradient-to-r opacity-60"
-                          style={{ background: `linear-gradient(to right, ${salon.theme_color}40, ${salon.theme_color}80)` }}
+                          style={{ background: `linear-gradient(to right, #6366f140, #6366f180)` }}
                         ></div>
-                      )}
-                      {salon.logo_url && (
-                        <div className="absolute bottom-4 left-4">
-                          <img 
-                            src={salon.logo_url} 
-                            alt="Logo" 
-                            className="w-12 h-12 rounded-full border-2 border-white object-cover bg-white"
-                          />
-                        </div>
                       )}
                     </div>
                     
@@ -571,7 +590,8 @@ const PerfilSalao = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Catálogo de Serviços</CardTitle>
-                <Button size="sm">
+                <Button size="sm" onClick={handleAddService}>
+                  <Plus className="w-4 h-4 mr-2" />
                   Adicionar Serviço
                 </Button>
               </CardHeader>
@@ -587,9 +607,25 @@ const PerfilSalao = () => {
                       <div key={service.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start mb-2">
                           <h4 className="font-medium">{service.name}</h4>
-                          <Badge variant="secondary">
-                            {formatCurrency(service.price_cents)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary">
+                              {formatCurrency(service.price_cents)}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditService(service)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteService(service.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                         {service.description && (
                           <p className="text-sm text-gray-600 mb-2">{service.description}</p>
@@ -669,6 +705,97 @@ const PerfilSalao = () => {
           </div>
         )}
       </div>
+
+      {/* Modal de Serviços */}
+      {showServiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                {editingService ? 'Editar Serviço' : 'Adicionar Serviço'}
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowServiceModal(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="service-name">Nome do Serviço</Label>
+                <Input
+                  id="service-name"
+                  value={serviceForm.name}
+                  onChange={(e) => setServiceForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Corte de Cabelo"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="service-description">Descrição</Label>
+                <Textarea
+                  id="service-description"
+                  value={serviceForm.description}
+                  onChange={(e) => setServiceForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descrição do serviço..."
+                  rows={3}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="service-price">Preço (R$)</Label>
+                  <Input
+                    id="service-price"
+                    type="number"
+                    step="0.01"
+                    value={serviceForm.price_cents / 100}
+                    onChange={(e) => setServiceForm(prev => ({ 
+                      ...prev, 
+                      price_cents: Math.round(parseFloat(e.target.value || '0') * 100)
+                    }))}
+                    placeholder="0,00"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="service-duration">Duração (min)</Label>
+                  <Input
+                    id="service-duration"
+                    type="number"
+                    value={serviceForm.duration_minutes}
+                    onChange={(e) => setServiceForm(prev => ({ 
+                      ...prev, 
+                      duration_minutes: parseInt(e.target.value || '60')
+                    }))}
+                    placeholder="60"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowServiceModal(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveService}
+                className="flex-1"
+                disabled={!serviceForm.name.trim()}
+              >
+                {editingService ? 'Salvar' : 'Adicionar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </MobileLayout>
   );
 };

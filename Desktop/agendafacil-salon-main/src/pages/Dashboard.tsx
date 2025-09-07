@@ -24,69 +24,150 @@ interface Appointment {
   updated_at: string;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  description?: string;
+  price_cents: number;
+  duration_minutes: number;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [servicesLoaded, setServicesLoaded] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showShareModal, setShowShareModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [salonId, setSalonId] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState('today');
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [totalRevenue, setTotalRevenue] = useState(0);
 
   useEffect(() => {
-    fetchAppointments();
-  }, [selectedDate, filterStatus]);
+    if (selectedPeriod !== 'custom') {
+      fetchAppointments();
+    }
+  }, [filterStatus, selectedPeriod]);
 
-  const createTestAppointments = async () => {
-    if (!salonId) return;
-    
-    const testAppointments = [
-      {
-        salon_id: salonId,
-        service_id: 'test-service-1',
-        client_name: 'João Silva',
-        client_email: 'joao@email.com',
-        client_phone: '(11) 99999-1111',
-        appointment_date: new Date().toISOString().split('T')[0],
-        appointment_time: '10:00',
-        duration_minutes: 60,
-        total_price: 50.00,
-        status: 'scheduled' as const,
-        notes: 'Corte de cabelo'
-      },
-      {
-        salon_id: salonId,
-        service_id: 'test-service-2',
-        client_name: 'Maria Santos',
-        client_email: 'maria@email.com',
-        client_phone: '(11) 99999-2222',
-        appointment_date: new Date().toISOString().split('T')[0],
-        appointment_time: '14:00',
-        duration_minutes: 90,
-        total_price: 80.00,
-        status: 'confirmed' as const,
-        notes: 'Corte e escova'
-      }
-    ];
+  useEffect(() => {
+    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+      fetchAppointments();
+    }
+  }, [customStartDate, customEndDate]);
 
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    console.log('🔄 Iniciando fetchServices...');
     try {
-      const { error } = await supabase
-        .from('appointments')
-        .insert(testAppointments);
-
-      if (error) {
-        console.error('Erro ao criar agendamentos de teste:', error);
-        alert('Erro ao criar agendamentos de teste');
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('👤 Usuário autenticado:', user?.id);
+      if (!user) {
+        setServicesLoaded(true);
         return;
       }
 
-      alert('Agendamentos de teste criados com sucesso!');
-      fetchAppointments();
+      // Buscar salão do usuário
+      const { data: salonData } = await supabase
+        .from('salons')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+
+      console.log('🏢 Salão encontrado:', salonData?.id);
+      if (!salonData) {
+        setServicesLoaded(true);
+        return;
+      }
+
+      // Debug: Verificar TODOS os serviços do salão (incluindo inativos)
+      const { data: allServicesData } = await supabase
+        .from('services')
+        .select('*')
+        .eq('salon_id', salonData.id);
+      
+      console.log('🔍 TODOS os serviços do salão:', allServicesData);
+
+      // Buscar serviços do salão
+      const { data: servicesData, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('salon_id', salonData.id);
+
+      if (error) {
+        console.error('❌ Erro ao carregar serviços:', error);
+        setServicesLoaded(true);
+        return;
+      }
+
+      console.log('✅ Serviços ATIVOS carregados:', servicesData?.length || 0);
+      console.log('📋 Dados dos serviços ativos:', servicesData);
+      setServices(servicesData || []);
     } catch (error) {
-      console.error('Erro:', error);
-      alert('Erro ao criar agendamentos de teste');
+      console.error('❌ Erro ao carregar serviços:', error);
+    } finally {
+      console.log('🏁 fetchServices finalizado, setServicesLoaded(true)');
+      setServicesLoaded(true);
     }
+  };
+
+  const getServiceName = (serviceId: string): string => {
+    if (!servicesLoaded) {
+      return 'Carregando serviço...';
+    }
+    const service = services.find(s => s.id === serviceId);
+    return service ? service.name : 'Serviço não encontrado';
+  };
+
+
+
+  const applyFilters = () => {
+    fetchAppointments();
+  };
+
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate = new Date();
+    let endDate = new Date();
+    
+    switch (selectedPeriod) {
+      case 'today':
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'week':
+        const dayOfWeek = now.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        startDate.setDate(now.getDate() - daysToMonday);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          startDate = new Date(customStartDate);
+          endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999);
+        }
+        break;
+      case 'all':
+      default:
+        return null;
+    }
+    
+    return { startDate, endDate };
   };
 
   const fetchAppointments = async () => {
@@ -146,9 +227,12 @@ const Dashboard = () => {
         .order('appointment_date', { ascending: true })
         .order('appointment_time', { ascending: true });
         
-      // Filtrar por data se selecionada
-      if (selectedDate) {
-        query = query.eq('appointment_date', selectedDate);
+      // Aplicar filtro de período
+      const dateRange = getDateRange();
+      if (dateRange) {
+        const startDateStr = dateRange.startDate.toISOString().split('T')[0];
+        const endDateStr = dateRange.endDate.toISOString().split('T')[0];
+        query = query.gte('appointment_date', startDateStr).lte('appointment_date', endDateStr);
       }
 
       if (filterStatus !== 'all') {
@@ -163,13 +247,7 @@ const Dashboard = () => {
         return;
       }
 
-      // Filtrar por status se necessário
-      let filteredData = data || [];
-      if (filterStatus !== 'all') {
-        filteredData = filteredData.filter(appointment => appointment.status === filterStatus);
-      }
-
-      setAppointments(filteredData);
+      setAppointments(data || []);
     } catch (error) {
       console.error('Erro:', error);
     } finally {
@@ -243,27 +321,27 @@ const Dashboard = () => {
   };
 
   const handleDeleteAppointment = async (appointmentId: string, clientName: string) => {
-    if (!confirm(`Tem certeza que deseja ocultar o agendamento de ${clientName}? O agendamento será removido da visualização mas os dados financeiros serão preservados.`)) {
+    if (!confirm(`Tem certeza que deseja excluir o agendamento de ${clientName}? Esta ação não pode ser desfeita.`)) {
       return;
     }
 
     try {
       const { error } = await supabase
         .from('appointments')
-        .update({ hidden: true })
+        .delete()
         .eq('id', appointmentId);
 
       if (error) {
-        console.error('Erro ao ocultar agendamento:', error);
-        alert('Erro ao ocultar agendamento. Tente novamente.');
+        console.error('Erro ao excluir agendamento:', error);
+        alert('Erro ao excluir agendamento. Tente novamente.');
         return;
       }
 
-      alert('Agendamento ocultado com sucesso!');
+      alert('Agendamento excluído com sucesso!');
       fetchAppointments();
     } catch (error) {
       console.error('Erro:', error);
-      alert('Erro ao ocultar agendamento. Tente novamente.');
+      alert('Erro ao excluir agendamento. Tente novamente.');
     }
   };
 
@@ -372,7 +450,8 @@ const Dashboard = () => {
   };
 
   const handleShare = (appointment: Appointment) => {
-    const message = `Olá ${appointment.client_name}! Seu agendamento está confirmado:\n\n📅 Data: ${new Date(appointment.appointment_date).toLocaleDateString('pt-BR')}\n⏰ Horário: ${appointment.appointment_time}\n💇 Serviço ID: ${appointment.service_id}\n💰 Valor: R$ ${appointment.total_price.toFixed(2)}\n\nNos vemos em breve! 😊`;
+    const serviceName = getServiceName(appointment.service_id);
+    const message = `Olá ${appointment.client_name}! Seu agendamento está confirmado:\n\n📅 Data: ${new Date(appointment.appointment_date).toLocaleDateString('pt-BR')}\n⏰ Horário: ${appointment.appointment_time}\n💇 Serviço: ${serviceName}\n💰 Valor: R$ ${appointment.total_price.toFixed(2)}\n\nNos vemos em breve! 😊`;
     
     const whatsappUrl = `https://wa.me/${appointment.client_phone?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -439,46 +518,148 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Date Selector */}
+        {/* Filters */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="flex-1">
+            <div className="space-y-4">
+              {/* Period Filter */}
+              <div>
                 <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Data
+                  Período
                 </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                <div className="flex flex-wrap bg-gray-100 rounded-lg p-1 gap-1">
+                  <button
+                    onClick={() => {
+                      setSelectedPeriod('today');
+                      setShowCustomDatePicker(false);
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      selectedPeriod === 'today'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Hoje
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedPeriod('week');
+                      setShowCustomDatePicker(false);
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      selectedPeriod === 'week'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Esta Semana
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedPeriod('month');
+                      setShowCustomDatePicker(false);
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      selectedPeriod === 'month'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Este Mês
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedPeriod('all');
+                      setShowCustomDatePicker(false);
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      selectedPeriod === 'all'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedPeriod('custom');
+                      setShowCustomDatePicker(true);
+                    }}
+                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                      selectedPeriod === 'custom'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Personalizado
+                  </button>
+                </div>
               </div>
-              <div className="flex-1">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Status
-                </label>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="all">Todos</option>
-                  <option value="scheduled">Agendado</option>
-                  <option value="confirmed">Confirmado</option>
-                  <option value="completed">Concluído</option>
-                  <option value="cancelled">Cancelado</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <Button
-                  onClick={createTestAppointments}
-                  variant="outline"
-                  className="whitespace-nowrap"
-                  disabled={!salonId}
-                >
-                  Criar Teste
-                </Button>
+
+              {/* Custom Date Picker */}
+              {showCustomDatePicker && (
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Selecionar Período</h3>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Data Inicial</label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Data Final</label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button 
+                        onClick={applyFilters}
+                        disabled={!customStartDate || !customEndDate}
+                        className="w-full sm:w-auto"
+                      >
+                        Aplicar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Status
+                  </label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="scheduled">Agendado</option>
+                    <option value="confirmed">Confirmado</option>
+                    <option value="completed">Concluído</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                </div>
+                {selectedPeriod !== 'custom' && (
+                  <div className="flex items-end">
+                    <Button
+                      onClick={applyFilters}
+                      className="whitespace-nowrap"
+                    >
+                      Aplicar Filtros
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -528,16 +709,34 @@ const Dashboard = () => {
                   }
                 </p>
                 <Button
-                  onClick={() => {
-                    const { data: { user } } = supabase.auth.getUser();
-                    if (user) {
-                      supabase.from('salons').select('id').eq('owner_id', user.id).single()
-                        .then(({ data }) => {
-                          if (data) {
-                            const publicUrl = `${window.location.origin}/agendamento-publico/${data.id}`;
-                            window.open(publicUrl, '_blank');
-                          }
-                        });
+                  onClick={async () => {
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        const { data, error } = await supabase
+                          .from('salons')
+                          .select('id')
+                          .eq('owner_id', user.id)
+                          .single();
+                        
+                        if (error) {
+                          console.error('Erro ao buscar salão:', error);
+                          alert('Erro ao buscar informações do salão.');
+                          return;
+                        }
+                        
+                        if (data) {
+                          const publicUrl = `${window.location.origin}/agendamento-publico/${data.id}`;
+                          window.open(publicUrl, '_blank');
+                        } else {
+                          alert('Salão não encontrado. Configure seu perfil primeiro.');
+                        }
+                      } else {
+                        alert('Usuário não autenticado.');
+                      }
+                    } catch (error) {
+                      console.error('Erro:', error);
+                      alert('Erro ao abrir link de agendamento.');
                     }
                   }}
                   className="flex items-center gap-2"
@@ -570,7 +769,7 @@ const Dashboard = () => {
                           {appointment.appointment_time}
                         </div>
                         <div className="font-medium text-blue-600">
-                          Serviço ID: {appointment.service_id}
+                          {getServiceName(appointment.service_id)}
                         </div>
                         <div className="font-semibold text-green-600">
                           R$ {appointment.total_price.toFixed(2)}

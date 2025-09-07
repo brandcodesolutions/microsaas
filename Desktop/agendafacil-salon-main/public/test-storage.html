@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Storage Supabase</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        img {
+            max-width: 300px;
+            height: auto;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        .url {
+            word-break: break-all;
+            background: #f5f5f5;
+            padding: 5px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Teste do Supabase Storage</h1>
+    
+    <div class="test-section">
+        <h2>📋 URLs sendo testadas:</h2>
+        <div id="urls-list"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>🖼️ Teste de Carregamento de Imagens:</h2>
+        <div id="image-tests"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>📊 Resultados dos Testes HTTP:</h2>
+        <div id="http-tests"></div>
+    </div>
+
+    <script>
+        // URLs para testar
+        const testUrls = [
+            'https://ofpuhlkkvzrxidqkwvyp.supabase.co/storage/v1/object/public/salon-assets/salon-images/32b4dcc5-05b0-4116-9a5b-27c5914d915f_cover.png',
+            'https://ofpuhlkkvzrxidqkwvyp.supabase.co/storage/v1/object/public/salon-assets/salon-images/32b4dcc5-05b0-4116-9a5b-27c5914d915f_logo.png',
+            // Teste com URL sem /public para comparar
+            'https://ofpuhlkkvzrxidqkwvyp.supabase.co/storage/v1/object/salon-assets/salon-images/32b4dcc5-05b0-4116-9a5b-27c5914d915f_cover.png'
+        ];
+
+        // Mostrar URLs
+        const urlsList = document.getElementById('urls-list');
+        testUrls.forEach((url, index) => {
+            const div = document.createElement('div');
+            div.className = 'url';
+            div.innerHTML = `<strong>${index + 1}:</strong> ${url}`;
+            urlsList.appendChild(div);
+        });
+
+        // Função para testar carregamento de imagem
+        function testImageLoad(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                const startTime = Date.now();
+                
+                img.onload = () => {
+                    const loadTime = Date.now() - startTime;
+                    resolve({ 
+                        success: true, 
+                        url, 
+                        loadTime,
+                        width: img.naturalWidth,
+                        height: img.naturalHeight
+                    });
+                };
+                
+                img.onerror = () => {
+                    resolve({ 
+                        success: false, 
+                        url, 
+                        error: 'Failed to load image'
+                    });
+                };
+                
+                img.src = url;
+            });
+        }
+
+        // Função para testar HTTP
+        async function testHttpRequest(url) {
+            try {
+                const response = await fetch(url, { method: 'HEAD' });
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    url
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message,
+                    url
+                };
+            }
+        }
+
+        // Executar testes
+        async function runTests() {
+            const imageTestsDiv = document.getElementById('image-tests');
+            const httpTestsDiv = document.getElementById('http-tests');
+
+            for (let i = 0; i < testUrls.length; i++) {
+                const url = testUrls[i];
+                
+                // Teste de imagem
+                const imageResult = await testImageLoad(url);
+                const imageDiv = document.createElement('div');
+                imageDiv.innerHTML = `
+                    <h3>Teste ${i + 1} - Imagem:</h3>
+                    <p class="${imageResult.success ? 'success' : 'error'}">
+                        ${imageResult.success ? 
+                            `✅ Sucesso! Dimensões: ${imageResult.width}x${imageResult.height}, Tempo: ${imageResult.loadTime}ms` : 
+                            `❌ Falha: ${imageResult.error}`
+                        }
+                    </p>
+                    ${imageResult.success ? `<img src="${url}" alt="Teste ${i + 1}">` : ''}
+                `;
+                imageTestsDiv.appendChild(imageDiv);
+
+                // Teste HTTP
+                const httpResult = await testHttpRequest(url);
+                const httpDiv = document.createElement('div');
+                httpDiv.innerHTML = `
+                    <h3>Teste ${i + 1} - HTTP:</h3>
+                    <p class="${httpResult.success ? 'success' : 'error'}">
+                        ${httpResult.success ? 
+                            `✅ Status: ${httpResult.status} ${httpResult.statusText}` : 
+                            `❌ Erro: ${httpResult.error || httpResult.status + ' ' + httpResult.statusText}`
+                        }
+                    </p>
+                    ${httpResult.headers ? `<pre>${JSON.stringify(httpResult.headers, null, 2)}</pre>` : ''}
+                `;
+                httpTestsDiv.appendChild(httpDiv);
+            }
+        }
+
+        // Iniciar testes quando a página carregar
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

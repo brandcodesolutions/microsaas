@@ -229,7 +229,7 @@ export const serviceService = {
         .from('services')
         .select('*')
         .eq('salon_id', salonId)
-        .eq('is_active', true)
+        // .eq('is_active', true) // Coluna não existe na tabela
         .order('name')
 
       if (error) {

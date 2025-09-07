@@ -16,8 +16,6 @@ interface Salon {
   phone?: string;
   email?: string;
   description?: string;
-  theme_color?: string;
-  logo_url?: string;
   cover_image_url?: string;
   opening_time?: string;
   closing_time?: string;
@@ -309,12 +307,13 @@ export default function PublicBooking() {
         return;
       }
 
-      // Carregar dados do salão (buscar por slug se for slug, por id se for UUID)
-      const isSlug = slugRegex.test(salonId);
+      // Carregar dados do salão (buscar por id se for UUID, por slug se for slug)
+      const isUuid = uuidRegex.test(salonId);
+      const isSlug = !isUuid && slugRegex.test(salonId);
       const { data: salonData, error: salonError } = await supabase
         .from('salons')
-        .select('id, name, address, phone, email, description, theme_color, logo_url, cover_image_url, opening_time, closing_time, instagram, whatsapp')
-        .eq(isSlug ? 'slug' : 'id', salonId)
+        .select('id, name, address, phone, email, description, cover_image_url, opening_time, closing_time, instagram, whatsapp')
+        .eq(isUuid ? 'id' : 'slug', salonId)
         .single();
 
       if (salonError) {
@@ -327,13 +326,12 @@ export default function PublicBooking() {
           phone: '(11) 99999-9999',
           email: 'teste@salon.com',
           description: 'Salão de beleza especializado em cortes modernos e coloração',
-          theme_color: '#8B5CF6',
-          logo_url: 'https://via.placeholder.com/150x150/8B5CF6/FFFFFF?text=AC',
+
           cover_image_url: 'https://via.placeholder.com/800x400/8B5CF6/FFFFFF?text=Salon+Cover',
           opening_time: '09:00:00',
           closing_time: '18:00:00',
-          instagram: '@alison_corte',
-          whatsapp: '11999999999'
+          instagram_url: '@alison_corte',
+          whatsapp_number: '11999999999'
         };
         setSalon(testSalon);
         
@@ -390,7 +388,7 @@ export default function PublicBooking() {
         const validServices = (servicesData || []).map(service => {
           return {
             ...service,
-            price: service.price || 0,
+            price: (service.price_cents || 0) / 100,
             duration_minutes: service.duration_minutes || 30
           };
         });
@@ -610,7 +608,7 @@ export default function PublicBooking() {
     );
   }
 
-  const themeColor = salon?.theme_color || '#8B5CF6';
+  const themeColor = '#8B5CF6';
   // Converter hex para rgba para transparência
   const hexToRgba = (hex: string, alpha: number) => {
     const r = parseInt(hex.slice(1, 3), 16);
@@ -655,47 +653,28 @@ export default function PublicBooking() {
         <Card className="mb-6 overflow-hidden shadow-lg">
           {/* Imagem de Capa */}
           {salon?.cover_image_url ? (
-            <div 
-              className="h-48 sm:h-64 bg-cover bg-center relative"
-              style={{ backgroundImage: `url(${salon.cover_image_url})` }}
+          <div 
+            className="h-48 sm:h-64 bg-cover bg-center relative"
+            style={{ backgroundImage: `url(${salon.cover_image_url})` }}
             >
               <div 
                 className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"
               ></div>
-              {salon?.logo_url && (
-                <div className="absolute bottom-4 left-4">
-                  <img 
-                    src={salon.logo_url} 
-                    alt={`Logo ${salon.name}`}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white object-cover bg-white shadow-lg"
-                  />
-                </div>
-              )}
+
             </div>
           ) : (
             <div 
               className="h-40 sm:h-48 bg-gradient-to-r relative flex items-center justify-center"
               style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}CC)` }}
             >
-              {salon?.logo_url ? (
-                <div className="flex flex-col items-center">
-                  <img 
-                    src={salon.logo_url} 
-                    alt={`Logo ${salon.name}`}
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white object-cover bg-white shadow-lg mb-3"
-                  />
-                  <h2 className="text-white text-xl sm:text-2xl font-bold text-center">{salon?.name}</h2>
+              <div className="text-center">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 border-4 border-white flex items-center justify-center mb-3 mx-auto">
+                  <span className="text-white text-2xl sm:text-3xl font-bold">
+                    {salon?.name?.charAt(0) || 'S'}
+                  </span>
                 </div>
-              ) : (
-                <div className="text-center">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 border-4 border-white flex items-center justify-center mb-3 mx-auto">
-                    <span className="text-white text-2xl sm:text-3xl font-bold">
-                      {salon?.name?.charAt(0) || 'S'}
-                    </span>
-                  </div>
-                  <h2 className="text-white text-xl sm:text-2xl font-bold">{salon?.name}</h2>
-                </div>
-              )}
+                <h2 className="text-white text-xl sm:text-2xl font-bold">{salon?.name}</h2>
+              </div>
             </div>
           )}
           
@@ -800,7 +779,7 @@ export default function PublicBooking() {
                     {services && services.length > 0 ? (
                       services.map((service) => (
                         <option key={service.id} value={service.id}>
-                          {service.name} - R$ {service.price ? service.price.toFixed(2) : '0,00'} ({service.duration_minutes || 0}min)
+                          {service.name} - R$ {((service.price_cents || 0) / 100).toFixed(2)} ({service.duration_minutes || 0}min)
                         </option>
                       ))
                     ) : (
