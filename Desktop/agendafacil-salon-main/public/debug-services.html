@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Carregamento de Serviços</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug - Carregamento de Serviços</h1>
+        
+        <p>Esta página ajuda a identificar problemas no carregamento de serviços na aplicação AgendaFácil.</p>
+        
+        <div>
+            <button class="button" onclick="debugServices()">🚀 Executar Debug</button>
+            <button class="button" onclick="clearLog()">🗑️ Limpar Log</button>
+            <button class="button" onclick="window.location.href='/'">🏠 Voltar para App</button>
+        </div>
+        
+        <div id="log" class="log">Clique em "Executar Debug" para começar...</div>
+    </div>
+
+    <script>
+        const logElement = document.getElementById('log');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            const logLine = `[${timestamp}] ${message}\n`;
+            
+            const span = document.createElement('span');
+            span.className = className;
+            span.textContent = logLine;
+            
+            logElement.appendChild(span);
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        function clearLog() {
+            logElement.innerHTML = '';
+        }
+        
+        async function debugServices() {
+            clearLog();
+            log('🔍 Iniciando debug dos serviços...', 'info');
+            
+            try {
+                // Verificar se o supabase está disponível
+                if (typeof window.supabase === 'undefined') {
+                    log('❌ Supabase não está disponível no window', 'error');
+                    log('💡 Tentando acessar via aplicação React...', 'warning');
+                    
+                    // Tentar acessar via React DevTools ou console
+                    log('📝 Execute este código no console da aplicação principal:', 'info');
+                    log('', 'info');
+                    log('// Cole este código no console do navegador na página principal:', 'info');
+                    log('(async () => {', 'info');
+                    log('  console.log("🔍 Debug dos serviços iniciado...");', 'info');
+                    log('  ', 'info');
+                    log('  // Verificar se há dados no localStorage', 'info');
+                    log('  const salonId = localStorage.getItem("salon_id");', 'info');
+                    log('  console.log("🏢 Salon ID no localStorage:", salonId);', 'info');
+                    log('  ', 'info');
+                    log('  // Verificar estado do React (se disponível)', 'info');
+                    log('  if (window.React) {', 'info');
+                    log('    console.log("✅ React está disponível");', 'info');
+                    log('  } else {', 'info');
+                    log('    console.log("❌ React não está disponível no window");', 'info');
+                    log('  }', 'info');
+                    log('  ', 'info');
+                    log('  // Verificar se há erros no console', 'info');
+                    log('  console.log("📊 Verifique se há erros vermelhos no console acima");', 'info');
+                    log('})();', 'info');
+                    
+                    return;
+                }
+                
+                log('✅ Supabase encontrado', 'success');
+                
+                // Continuar com o debug normal...
+                log('🔐 Verificando autenticação...', 'info');
+                
+                // Aqui você adicionaria o código de debug real
+                // Por enquanto, vamos mostrar instruções
+                
+            } catch (error) {
+                log(`💥 Erro geral: ${error.message}`, 'error');
+            }
+        }
+        
+        // Instruções iniciais
+        log('📋 Instruções:', 'info');
+        log('1. Abra a aplicação principal em outra aba', 'info');
+        log('2. Faça login na aplicação', 'info');
+        log('3. Vá para a página de Agendamentos', 'info');
+        log('4. Abra o DevTools (F12) e vá para a aba Console', 'info');
+        log('5. Procure por mensagens que começam com 🔄, 👤, 🏢, etc.', 'info');
+        log('6. Se não houver logs, execute o debug clicando no botão acima', 'info');
+        log('', 'info');
+        log('🎯 O que procurar:', 'warning');
+        log('- "🔄 Iniciando fetchServices..." - deve aparecer', 'warning');
+        log('- "👤 Usuário autenticado: [ID]" - deve mostrar um ID', 'warning');
+        log('- "🏢 Salão encontrado: [ID]" - deve mostrar um ID do salão', 'warning');
+        log('- "✅ Serviços carregados: [número]" - deve mostrar quantos serviços foram encontrados', 'warning');
+        log('', 'info');
+        log('❌ Se aparecer "Carregando serviço..." é porque:', 'error');
+        log('- O usuário não está autenticado', 'error');
+        log('- O salão não foi encontrado', 'error');
+        log('- Não há serviços cadastrados', 'error');
+        log('- Há erro na consulta ao banco de dados', 'error');
+    </script>
+</body>
+</html>

@@ -13,6 +13,7 @@ import PerfilSalao from "./pages/PerfilSalao";
 import Configuracoes from "./pages/Configuracoes";
 import Agendamento from "./pages/Agendamento";
 import PublicBooking from "./pages/PublicBooking";
+
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -56,6 +57,7 @@ const App = () => (
           } />
           <Route path="/agendamento/:salonId" element={<Agendamento />} />
           <Route path="/agendamento-publico/:salonId" element={<PublicBooking />} />
+
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

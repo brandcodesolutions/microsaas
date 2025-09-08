@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Clock, Users, CheckCircle, CheckCircle2, XCircle, AlertCircle, Share2, Filter, Trash2, Edit, MoreVertical, RotateCcw } from "lucide-react";
+import { Calendar, Plus, Clock, Users, CheckCircle, CheckCircle2, XCircle, AlertCircle, Share2, Filter, Trash2, Edit, MoreVertical, RotateCcw, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/MobileLayout";
+import TutorialModal from "@/components/TutorialModal";
 
 interface Appointment {
   id: string;
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showTutorialModal, setShowTutorialModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [salonId, setSalonId] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
@@ -67,52 +69,65 @@ const Dashboard = () => {
 
   const fetchServices = async () => {
     console.log('🔄 Iniciando fetchServices...');
+    setServicesLoaded(false); // Garantir que está false no início
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔐 Verificando autenticação...');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('❌ Erro de autenticação:', authError);
+        setServicesLoaded(true);
+        return;
+      }
+      
       console.log('👤 Usuário autenticado:', user?.id);
       if (!user) {
+        console.log('❌ Usuário não encontrado');
         setServicesLoaded(true);
         return;
       }
 
+      console.log('🏢 Buscando salão do usuário...');
       // Buscar salão do usuário
-      const { data: salonData } = await supabase
+      const { data: salonData, error: salonError } = await supabase
         .from('salons')
         .select('id')
         .eq('owner_id', user.id)
         .single();
 
+      if (salonError) {
+        console.error('❌ Erro ao buscar salão:', salonError);
+        setServicesLoaded(true);
+        return;
+      }
+
       console.log('🏢 Salão encontrado:', salonData?.id);
       if (!salonData) {
+        console.log('❌ Nenhum salão encontrado para o usuário');
         setServicesLoaded(true);
         return;
       }
 
-      // Debug: Verificar TODOS os serviços do salão (incluindo inativos)
-      const { data: allServicesData } = await supabase
-        .from('services')
-        .select('*')
-        .eq('salon_id', salonData.id);
-      
-      console.log('🔍 TODOS os serviços do salão:', allServicesData);
-
+      console.log('🔍 Buscando serviços do salão...');
       // Buscar serviços do salão
-      const { data: servicesData, error } = await supabase
+      const { data: servicesData, error: servicesError } = await supabase
         .from('services')
         .select('*')
         .eq('salon_id', salonData.id);
 
-      if (error) {
-        console.error('❌ Erro ao carregar serviços:', error);
+      if (servicesError) {
+        console.error('❌ Erro ao carregar serviços:', servicesError);
         setServicesLoaded(true);
         return;
       }
 
-      console.log('✅ Serviços ATIVOS carregados:', servicesData?.length || 0);
-      console.log('📋 Dados dos serviços ativos:', servicesData);
+      console.log('✅ Serviços carregados:', servicesData?.length || 0);
+      console.log('📋 Dados dos serviços:', servicesData);
       setServices(servicesData || []);
+      
     } catch (error) {
-      console.error('❌ Erro ao carregar serviços:', error);
+      console.error('❌ Erro geral ao carregar serviços:', error);
     } finally {
       console.log('🏁 fetchServices finalizado, setServicesLoaded(true)');
       setServicesLoaded(true);
@@ -506,16 +521,27 @@ const Dashboard = () => {
             <Calendar className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-800">Agendamentos</h1>
           </div>
-          <Button
-            onClick={handleSharePublicLink}
-            variant="outline"
-            size="sm"
-            className="flex items-center gap-2"
-            disabled={!salonId}
-          >
-            <Share2 className="h-4 w-4" />
-            Link Público
-          </Button>
+          <div className="flex items-center gap-2">
+             <Button
+               onClick={() => setShowTutorialModal(true)}
+               variant="outline"
+               size="sm"
+               className="flex items-center gap-2"
+             >
+               <BookOpen className="h-4 w-4" />
+               Tutorial
+             </Button>
+             <Button
+               onClick={handleSharePublicLink}
+               variant="outline"
+               size="sm"
+               className="flex items-center gap-2"
+               disabled={!salonId}
+             >
+               <Share2 className="h-4 w-4" />
+               Link Público
+             </Button>
+           </div>
         </div>
 
         {/* Filters */}
@@ -918,6 +944,12 @@ const Dashboard = () => {
 
 
       </div>
+      
+      {/* Tutorial Modal */}
+      <TutorialModal 
+        isOpen={showTutorialModal} 
+        onClose={() => setShowTutorialModal(false)} 
+      />
     </MobileLayout>
   );
 };
