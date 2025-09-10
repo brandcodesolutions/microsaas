@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Clock, Users, CheckCircle, CheckCircle2, XCircle, AlertCircle, Share2, Filter, Trash2, Edit, MoreVertical, RotateCcw, BookOpen } from "lucide-react";
+import { Calendar, Plus, Clock, Users, CheckCircle, CheckCircle2, XCircle, AlertCircle, Share2, Filter, Trash2, Edit, MoreVertical, RotateCcw, BookOpen, List, Grid } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/MobileLayout";
 import TutorialModal from "@/components/TutorialModal";
+import TimelineView from "@/components/TimelineView";
 
 interface Appointment {
   id: string;
@@ -37,6 +38,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [servicesLoaded, setServicesLoaded] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -50,6 +52,8 @@ const Dashboard = () => {
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [viewMode, setViewMode] = useState<'list' | 'timeline'>('timeline');
+  const [timelineSelectedDate, setTimelineSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (selectedPeriod !== 'custom') {
@@ -255,14 +259,26 @@ const Dashboard = () => {
       }
 
       const { data, error } = await query;
-      
+
       if (error) {
-        console.error('Erro ao buscar agendamentos:', error);
+        console.error('Erro ao carregar agendamentos:', error);
         setAppointments([]);
         return;
       }
 
       setAppointments(data || []);
+      
+      // Buscar todos os agendamentos para o TimelineView (sem filtro de período)
+      const { data: allData, error: allError } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('salon_id', currentSalon.id)
+        .order('appointment_date', { ascending: true })
+        .order('appointment_time', { ascending: true });
+        
+      if (!allError) {
+        setAllAppointments(allData || []);
+      }
     } catch (error) {
       console.error('Erro:', error);
     } finally {
@@ -522,6 +538,27 @@ const Dashboard = () => {
             <h1 className="text-2xl font-bold text-gray-800">Agendamentos</h1>
           </div>
           <div className="flex items-center gap-2">
+             {/* Toggle de visualização */}
+             <div className="flex bg-gray-100 rounded-lg p-1">
+               <Button
+                 onClick={() => setViewMode('timeline')}
+                 variant={viewMode === 'timeline' ? 'default' : 'ghost'}
+                 size="sm"
+                 className="h-8 px-3"
+               >
+                 <Grid className="h-4 w-4 mr-1" />
+                 Timeline
+               </Button>
+               <Button
+                 onClick={() => setViewMode('list')}
+                 variant={viewMode === 'list' ? 'default' : 'ghost'}
+                 size="sm"
+                 className="h-8 px-3"
+               >
+                 <List className="h-4 w-4 mr-1" />
+                 Lista
+               </Button>
+             </div>
              <Button
                onClick={() => setShowTutorialModal(true)}
                variant="outline"
@@ -544,15 +581,16 @@ const Dashboard = () => {
            </div>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              {/* Period Filter */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">
-                  Período
-                </label>
+        {/* Filters - apenas para visualização em lista */}
+        {viewMode === 'list' && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="space-y-4">
+                {/* Period Filter */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Período
+                  </label>
                 <div className="flex flex-wrap bg-gray-100 rounded-lg p-1 gap-1">
                   <button
                     onClick={() => {
@@ -686,10 +724,11 @@ const Dashboard = () => {
                     </Button>
                   </div>
                 )}
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -719,61 +758,75 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Appointments List */}
-        <div className="space-y-4">
-          {filteredAppointments.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center">
-                <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-600 mb-2">
-                  Nenhum agendamento encontrado
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  {filterStatus === 'all' 
-                    ? 'Não há agendamentos para esta data.'
-                    : `Não há agendamentos com status "${getStatusText(filterStatus)}" para esta data.`
-                  }
-                </p>
-                <Button
-                  onClick={async () => {
-                    try {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (user) {
-                        const { data, error } = await supabase
-                          .from('salons')
-                          .select('id')
-                          .eq('owner_id', user.id)
-                          .single();
-                        
-                        if (error) {
-                          console.error('Erro ao buscar salão:', error);
-                          alert('Erro ao buscar informações do salão.');
-                          return;
-                        }
-                        
-                        if (data) {
-                          const publicUrl = `${window.location.origin}/agendamento-publico/${data.id}`;
-                          window.open(publicUrl, '_blank');
-                        } else {
-                          alert('Salão não encontrado. Configure seu perfil primeiro.');
-                        }
-                      } else {
-                        alert('Usuário não autenticado.');
-                      }
-                    } catch (error) {
-                      console.error('Erro:', error);
-                      alert('Erro ao abrir link de agendamento.');
+        {/* Appointments Content */}
+        {viewMode === 'timeline' ? (
+          <TimelineView 
+            appointments={allAppointments}
+            services={services}
+            selectedDate={timelineSelectedDate}
+            onDateChange={setTimelineSelectedDate}
+            onCompleteAppointment={handleCompleteAppointment}
+            onStatusChange={handleStatusChange}
+            onDeleteAppointment={handleDeleteAppointment}
+            onRescheduleAppointment={handleRescheduleAppointment}
+            onReactivateAppointment={handleReactivateAppointment}
+            onShare={handleShare}
+          />
+        ) : (
+          <div className="space-y-4">
+            {filteredAppointments.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-medium text-gray-600 mb-2">
+                    Nenhum agendamento encontrado
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    {filterStatus === 'all' 
+                      ? 'Não há agendamentos para esta data.'
+                      : `Não há agendamentos com status "${getStatusText(filterStatus)}" para esta data.`
                     }
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Share2 className="h-4 w-4" />
-                  Agendar Online
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredAppointments.map((appointment) => (
+                  </p>
+                  <Button
+                    onClick={async () => {
+                      try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (user) {
+                          const { data, error } = await supabase
+                            .from('salons')
+                            .select('id')
+                            .eq('owner_id', user.id)
+                            .single();
+                          
+                          if (error) {
+                            console.error('Erro ao buscar salão:', error);
+                            alert('Erro ao buscar informações do salão.');
+                            return;
+                          }
+                          
+                          if (data) {
+                            const publicUrl = `${window.location.origin}/agendamento-publico/${data.id}`;
+                            window.open(publicUrl, '_blank');
+                          } else {
+                            alert('Salão não encontrado. Configure seu perfil primeiro.');
+                          }
+                        } else {
+                          alert('Usuário não autenticado.');
+                        }
+                      } catch (error) {
+                        console.error('Erro:', error);
+                        alert('Erro ao abrir link de agendamento.');
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Agendar Online
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredAppointments.map((appointment) => (
               <Card key={appointment.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
@@ -938,9 +991,10 @@ const Dashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
 
 
       </div>
