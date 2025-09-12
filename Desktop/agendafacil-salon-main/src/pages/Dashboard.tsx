@@ -37,6 +37,7 @@ interface Service {
 const Dashboard = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -56,24 +57,31 @@ const Dashboard = () => {
   const [timelineSelectedDate, setTimelineSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    if (selectedPeriod !== 'custom') {
+    console.log('🔄 useEffect 1 - selectedPeriod:', selectedPeriod, 'servicesLoaded:', servicesLoaded);
+    if (selectedPeriod !== 'custom' && servicesLoaded) {
+      console.log('✅ Chamando fetchAppointments do useEffect 1');
       fetchAppointments();
     }
-  }, [filterStatus, selectedPeriod]);
+  }, [filterStatus, selectedPeriod, servicesLoaded]);
 
   useEffect(() => {
-    if (selectedPeriod === 'custom' && customStartDate && customEndDate) {
+    if (selectedPeriod === 'custom' && customStartDate && customEndDate && servicesLoaded) {
       fetchAppointments();
     }
-  }, [customStartDate, customEndDate]);
+  }, [customStartDate, customEndDate, servicesLoaded]);
 
   useEffect(() => {
     fetchServices();
   }, []);
 
   const fetchServices = async () => {
+    // Evitar múltiplas execuções se já estiver carregado
+    if (servicesLoaded) {
+      console.log('⏭️ Serviços já carregados, pulando fetchServices');
+      return;
+    }
+    
     console.log('🔄 Iniciando fetchServices...');
-    setServicesLoaded(false); // Garantir que está false no início
     
     try {
       console.log('🔐 Verificando autenticação...');
@@ -135,6 +143,8 @@ const Dashboard = () => {
     } finally {
       console.log('🏁 fetchServices finalizado, setServicesLoaded(true)');
       setServicesLoaded(true);
+      setLoading(false); // Garantir que o loading seja desabilitado
+      setInitialLoadComplete(true); // Marcar carregamento inicial como completo
     }
   };
 
@@ -191,6 +201,12 @@ const Dashboard = () => {
 
   const fetchAppointments = async () => {
     try {
+      // Aguardar que os serviços sejam carregados primeiro
+      if (!servicesLoaded) {
+        console.log('⏳ Aguardando serviços serem carregados...');
+        return;
+      }
+      
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         navigate('/login');
@@ -266,7 +282,15 @@ const Dashboard = () => {
         return;
       }
 
-      setAppointments(data || []);
+      // Corrigir todos os agendamentos para 30 minutos
+      const correctedAppointments = (data || []).map(appointment => {
+        return {
+          ...appointment,
+          duration_minutes: 30
+        };
+      });
+      
+      setAppointments(correctedAppointments);
       
       // Buscar todos os agendamentos para o TimelineView (sem filtro de período)
       const { data: allData, error: allError } = await supabase
@@ -277,7 +301,30 @@ const Dashboard = () => {
         .order('appointment_time', { ascending: true });
         
       if (!allError) {
-        setAllAppointments(allData || []);
+        // Atualizar todos os agendamentos no banco para 30 minutos
+        const appointmentsToUpdate = (allData || []).filter(appointment => 
+          appointment.duration_minutes !== 30
+        );
+        
+        if (appointmentsToUpdate.length > 0) {
+          console.log(`Atualizando ${appointmentsToUpdate.length} agendamentos para 30 minutos`);
+          
+          for (const appointment of appointmentsToUpdate) {
+            await supabase
+              .from('appointments')
+              .update({ duration_minutes: 30 })
+              .eq('id', appointment.id);
+          }
+        }
+        
+        // Corrigir todos os agendamentos da timeline para 30 minutos
+        const correctedAllAppointments = (allData || []).map(appointment => {
+          return {
+            ...appointment,
+            duration_minutes: 30
+          };
+        });
+        setAllAppointments(correctedAllAppointments);
       }
     } catch (error) {
       console.error('Erro:', error);
@@ -489,6 +536,7 @@ const Dashboard = () => {
   };
 
   const handleSharePublicLink = () => {
+    console.log('🔥 Botão clicado! SalonId:', salonId);
     if (!salonId) {
       alert('ID do salão não encontrado. Tente recarregar a página.');
       return;
@@ -515,18 +563,19 @@ const Dashboard = () => {
 
   const stats = getDateStats();
 
-  if (loading) {
-    return (
-      <MobileLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p>Carregando agendamentos...</p>
-          </div>
-        </div>
-      </MobileLayout>
-    );
-  }
+  // Remover condição de loading que causa problemas de DOM
+  // if (loading && !initialLoadComplete) {
+  //   return (
+  //     <MobileLayout>
+  //       <div className="flex items-center justify-center min-h-screen">
+  //         <div className="text-center">
+  //           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+  //           <p>Carregando agendamentos...</p>
+  //         </div>
+  //       </div>
+  //     </MobileLayout>
+  //   );
+  // }
 
   return (
     <MobileLayout>
@@ -536,6 +585,9 @@ const Dashboard = () => {
           <div className="flex items-center gap-3">
             <Calendar className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-800">Agendamentos</h1>
+            {loading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            )}
           </div>
           <div className="flex items-center gap-2">
              {/* Toggle de visualização */}
@@ -560,7 +612,10 @@ const Dashboard = () => {
                </Button>
              </div>
              <Button
-               onClick={() => setShowTutorialModal(true)}
+               onClick={() => {
+                 console.log('🎯 Botão Tutorial clicado!');
+                 setShowTutorialModal(true);
+               }}
                variant="outline"
                size="sm"
                className="flex items-center gap-2"
@@ -576,7 +631,7 @@ const Dashboard = () => {
                disabled={!salonId}
              >
                <Share2 className="h-4 w-4" />
-               Link Público
+               Link Público {!salonId && '(Carregando...)'}
              </Button>
            </div>
         </div>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste JavaScript</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Teste de JavaScript</h1>
+        <p>Esta página testa se o JavaScript está funcionando corretamente no navegador.</p>
+        
+        <div>
+            <button onclick="testAlert()">Teste Alert</button>
+            <button onclick="testConsole()">Teste Console</button>
+            <button onclick="testDOM()">Teste DOM</button>
+            <button onclick="testEventListener()">Teste Event Listener</button>
+        </div>
+        
+        <div id="result" class="result">
+            <strong>Resultados:</strong><br>
+            <span id="output">Clique nos botões para testar...</span>
+        </div>
+    </div>
+
+    <script>
+        console.log('🔥 JavaScript carregado com sucesso!');
+        
+        function testAlert() {
+            alert('✅ Alert funcionando!');
+            updateOutput('Alert executado com sucesso');
+        }
+        
+        function testConsole() {
+            console.log('✅ Console.log funcionando!');
+            updateOutput('Console.log executado - verifique o DevTools');
+        }
+        
+        function testDOM() {
+            const element = document.getElementById('output');
+            if (element) {
+                updateOutput('✅ Manipulação DOM funcionando!');
+            } else {
+                updateOutput('❌ Erro na manipulação DOM');
+            }
+        }
+        
+        function testEventListener() {
+            const btn = document.createElement('button');
+            btn.textContent = 'Botão Dinâmico';
+            btn.addEventListener('click', function() {
+                updateOutput('✅ Event Listener funcionando!');
+            });
+            document.querySelector('.container').appendChild(btn);
+            updateOutput('Botão dinâmico criado - clique nele');
+        }
+        
+        function updateOutput(message) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<br>[${timestamp}] ${message}`;
+        }
+        
+        // Teste automático ao carregar
+        window.addEventListener('load', function() {
+            updateOutput('✅ Página carregada e JavaScript inicializado');
+        });
+    </script>
+</body>
+</html>

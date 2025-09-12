@@ -33,6 +33,7 @@ interface Service {
 }
 
 const PerfilSalao = () => {
+  console.log('🔍 PerfilSalao component rendered');
   const [salon, setSalon] = useState<SalonData | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +51,7 @@ const PerfilSalao = () => {
   const [uploadingCover, setUploadingCover] = useState(false);
 
   useEffect(() => {
+    console.log('🚀 useEffect triggered - loading salon data');
     loadSalonData();
   }, []);
 
@@ -57,7 +59,12 @@ const PerfilSalao = () => {
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.error('Usuário não autenticado');
+        setError('Usuário não autenticado. Faça login novamente.');
+        setIsLoading(false);
+        return;
+      }
 
       // Load salon data
       const { data: salonData, error: salonError } = await supabase
@@ -67,7 +74,9 @@ const PerfilSalao = () => {
         .single();
 
       if (salonError) {
-        setError("Erro ao carregar dados do salão");
+        console.error('Erro ao carregar salão:', salonError);
+        setError("Erro ao carregar dados do salão: " + salonError.message);
+        setIsLoading(false);
         return;
       }
 
@@ -80,10 +89,30 @@ const PerfilSalao = () => {
         .eq('salon_id', salonData.id);
 
       if (servicesData) {
-        setServices(servicesData);
+        // Corrigir serviços que não têm 30 minutos de duração
+        const correctedServices = servicesData.map(service => {
+          if (service.duration_minutes !== 30) {
+            return { ...service, duration_minutes: 30 };
+          }
+          return service;
+        });
+        
+        // Atualizar serviços no banco se necessário
+        const servicesToUpdate = servicesData.filter(service => service.duration_minutes !== 30);
+        if (servicesToUpdate.length > 0) {
+          for (const service of servicesToUpdate) {
+            await supabase
+              .from('services')
+              .update({ duration_minutes: 30 })
+              .eq('id', service.id);
+          }
+        }
+        
+        setServices(correctedServices);
       }
     } catch (error: any) {
-      setError(error.message);
+      console.error('Erro geral no loadSalonData:', error);
+      setError('Erro ao carregar dados: ' + (error.message || 'Erro desconhecido'));
     } finally {
       setIsLoading(false);
     }
